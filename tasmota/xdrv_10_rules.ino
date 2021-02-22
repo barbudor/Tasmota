@@ -80,6 +80,8 @@
 #define D_CMND_SUB "Sub"
 #define D_CMND_MULT "Mult"
 #define D_CMND_SCALE "Scale"
+#define D_CMND_SETBIT "Setb"
+#define D_CMND_CLEARBIT "Clearb"
 #define D_CMND_CALC_RESOLUTION "CalcRes"
 #define D_CMND_SUBSCRIBE "Subscribe"
 #define D_CMND_UNSUBSCRIBE "Unsubscribe"
@@ -132,6 +134,7 @@ const char kCompareOperators[] PROGMEM = "=\0>\0<\0|\0==!=>=<=$>$<$|$!$^";
 const char kRulesCommands[] PROGMEM = "|"  // No prefix
   D_CMND_RULE "|" D_CMND_RULETIMER "|" D_CMND_EVENT "|" D_CMND_VAR "|" D_CMND_MEM "|"
   D_CMND_ADD "|"  D_CMND_SUB "|" D_CMND_MULT "|" D_CMND_SCALE "|" D_CMND_CALC_RESOLUTION
+  "|" D_CMND_SETBIT "|" D_CMND_CLEARBIT
 #ifdef SUPPORT_MQTT_EVENT
   "|" D_CMND_SUBSCRIBE "|" D_CMND_UNSUBSCRIBE
 #endif
@@ -143,6 +146,7 @@ const char kRulesCommands[] PROGMEM = "|"  // No prefix
 void (* const RulesCommand[])(void) PROGMEM = {
   &CmndRule, &CmndRuleTimer, &CmndEvent, &CmndVariable, &CmndMemory,
   &CmndAddition, &CmndSubtract, &CmndMultiply, &CmndScale, &CmndCalcResolution
+  , &CmndSetbit, &CmndClearbit
 #ifdef SUPPORT_MQTT_EVENT
   , &CmndSubscribe, &CmndUnsubscribe
 #endif
@@ -181,7 +185,8 @@ struct RULES {
   char event_data[100];
 } Rules;
 
-char rules_vars[MAX_RULE_VARS][33] = {{ 0 }};
+#define MAX_VAR_LEN    32
+char rules_vars[MAX_RULE_VARS][MAX_VAR_LEN+1] = {{ 0 }};
 
 #if (MAX_RULE_VARS>16)
 #error MAX_RULE_VARS is bigger than 16
@@ -2312,6 +2317,34 @@ void CmndScale(void)
         ResponseCmndIdxError();
         return;
       }
+    }
+    ResponseCmndIdxChar(rules_vars[XdrvMailbox.index -1]);
+  }
+}
+
+void CmndSetbit(void)
+{
+  if ((XdrvMailbox.index > 0) && (XdrvMailbox.index <= MAX_RULE_VARS)) {
+    if (XdrvMailbox.data_len > 0) {
+      uint32_t var = TextToUint(rules_vars[XdrvMailbox.index -1]);
+      uint8_t bit = TextToUint(XdrvMailbox.data);
+      bitSet(var,bit);
+      snprintf(rules_vars[XdrvMailbox.index -1], MAX_VAR_LEN, PSTR("%u"), var);
+      bitSet(Rules.vars_event, XdrvMailbox.index -1);
+    }
+    ResponseCmndIdxChar(rules_vars[XdrvMailbox.index -1]);
+  }
+}
+
+void CmndClearbit(void)
+{
+  if ((XdrvMailbox.index > 0) && (XdrvMailbox.index <= MAX_RULE_VARS)) {
+    if (XdrvMailbox.data_len > 0) {
+      uint32_t var = TextToUint(rules_vars[XdrvMailbox.index -1]);
+      uint8_t bit = TextToUint(XdrvMailbox.data);
+      bitClear(var,bit);
+      snprintf(rules_vars[XdrvMailbox.index -1], MAX_VAR_LEN, PSTR("%u"), var);
+      bitSet(Rules.vars_event, XdrvMailbox.index -1);
     }
     ResponseCmndIdxChar(rules_vars[XdrvMailbox.index -1]);
   }
