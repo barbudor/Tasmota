@@ -47,81 +47,106 @@ void (* const Ws2812Command[])(void) PROGMEM = {
 
 #include <NeoPixelBus.h>
 
-#if (USE_WS2812_HARDWARE == NEO_HW_P9813)
-  typedef P9813BgrFeature selectedNeoFeatureType;
-  #undef USE_WS2812_DMA
-  #undef USE_WS2812_INVERTED
-#elif (USE_WS2812_CTYPE == NEO_GRB)
-  typedef NeoGrbFeature selectedNeoFeatureType;
-#elif (USE_WS2812_CTYPE == NEO_BRG)
-  typedef NeoBrgFeature selectedNeoFeatureType;
-#elif (USE_WS2812_CTYPE == NEO_RBG)
-  typedef NeoRbgFeature selectedNeoFeatureType;
-#elif (USE_WS2812_CTYPE == NEO_RGBW)
-  typedef NeoRgbwFeature selectedNeoFeatureType;
-#elif (USE_WS2812_CTYPE == NEO_GRBW)
-  typedef NeoGrbwFeature selectedNeoFeatureType;
-#else   // USE_WS2812_CTYPE
-  typedef NeoRgbFeature selectedNeoFeatureType;
-#endif  // USE_WS2812_CTYPE
-
-#ifdef USE_WS2812_DMA
-
-#ifdef USE_WS2812_INVERTED
 // See NeoEspDmaMethod.h for available options
-
-#if (USE_WS2812_HARDWARE == NEO_HW_WS2812X)
-  typedef NeoEsp8266DmaInvertedWs2812xMethod selectedNeoSpeedType;
-#elif (USE_WS2812_HARDWARE == NEO_HW_SK6812)
-  typedef NeoEsp8266DmaInvertedSk6812Method selectedNeoSpeedType;
-#elif (USE_WS2812_HARDWARE == NEO_HW_APA106)
-  typedef NeoEsp8266DmaInvertedApa106Method selectedNeoSpeedType;
-#else   // USE_WS2812_HARDWARE
-  typedef NeoEsp8266DmaInverted800KbpsMethod selectedNeoSpeedType;
-#endif  // USE_WS2812_HARDWARE
-
-#else  // No USE_WS2812_INVERTED
-
-#if (USE_WS2812_HARDWARE == NEO_HW_WS2812X)
-  typedef NeoEsp8266DmaWs2812xMethod selectedNeoSpeedType;
-#elif (USE_WS2812_HARDWARE == NEO_HW_SK6812)
-  typedef NeoEsp8266DmaSk6812Method selectedNeoSpeedType;
-#elif (USE_WS2812_HARDWARE == NEO_HW_APA106)
-  typedef NeoEsp8266DmaApa106Method selectedNeoSpeedType;
-#else   // USE_WS2812_HARDWARE
-  typedef NeoEsp8266Dma800KbpsMethod selectedNeoSpeedType;
-#endif  // USE_WS2812_HARDWARE
-
-#endif  // No USE_WS2812_INVERTED
-
-#else   // No USE_WS2812_DMA
-
-#ifdef USE_WS2812_INVERTED
 // See NeoEspBitBangMethod.h for available options
 
+// Build `selectedNeoFeatureType` as Neo-Rgb-Feature
+// parametrized as: NEO_FEATURE_NEO+NEO_FEATURE_TYPE+NEO_FEATURE_FEATURE
+#define CONCAT2(A,B)    CONCAT2_(A,B)   // ensures expansion first, see https://stackoverflow.com/questions/3221896/how-can-i-guarantee-full-macro-expansion-of-a-parameter-before-paste
+#define CONCAT2_(A,B)    A ## B
+#define CONCAT3(A,B,C)    CONCAT3_(A,B,C)   // ensures expansion first, see https://stackoverflow.com/questions/3221896/how-can-i-guarantee-full-macro-expansion-of-a-parameter-before-paste
+#define CONCAT3_(A,B,C)    A ## B ## C
+
+#define NEO_FEATURE_NEO       Neo
+#define NEO_FEATURE_FEATURE   Feature
+
+// select the right Neo feature based on USE_WS2812_CTYPE
+// NEO_FEATURE_TYPE can be one of: Rgb (default), Grb, Brg, Rgb, Rgbw, Grbw
+#if   (USE_WS2812_CTYPE == NEO_GRB)
+  #define NEO_FEATURE_TYPE  Grb
+#elif (USE_WS2812_CTYPE == NEO_BRG)
+  #define NEO_FEATURE_TYPE  Brg
+#elif (USE_WS2812_CTYPE == NEO_RBG)
+  #define NEO_FEATURE_TYPE  Rbg
+#elif (USE_WS2812_CTYPE == NEO_RGBW)
+  #define NEO_FEATURE_TYPE  Rgbw
+#elif (USE_WS2812_CTYPE == NEO_GRBW)
+  #define NEO_FEATURE_TYPE  Grbw
+#else
+  #define NEO_FEATURE_TYPE  Rgb
+#endif
+
+// Exception for NEO_HW_P9813
+#if (USE_WS2812_HARDWARE == NEO_HW_P9813)
+  #undef NEO_FEATURE_NEO
+  #undef NEO_FEATURE_TYPE
+  #define NEO_FEATURE_NEO     P9813   // P9813BgrFeature
+  #define NEO_FEATURE_TYPE    Bgr
+  #undef USE_WS2812_DMA
+  #undef USE_WS2812_INVERTED
+#endif  // USE_WS2812_CTYPE
+
+typedef CONCAT3(NEO_FEATURE_NEO,NEO_FEATURE_TYPE,NEO_FEATURE_FEATURE) selectedNeoFeatureType;
+
+// selectedNeoSpeedType is built as Neo+Esp8266+Dma+Inverted+Ws2812x+Method
+// Or NEO_NEO+NEO_CHIP+NEO_PROTO+NEO_INV+NEO_HW+Method
+#define CONCAT6(A,B,C,D,E,F)    CONCAT6_(A,B,C,D,E,F)   // ensures expansion first, see https://stackoverflow.com/questions/3221896/how-can-i-guarantee-full-macro-expansion-of-a-parameter-before-paste
+#define CONCAT6_(A,B,C,D,E,F)    A ## B ## C ## D ## E ## F
+
+#define NEO_NEO         Neo
+
+#ifdef ESP32
+  #define NEO_CHIP      Esp32
+#else
+  #define NEO_CHIP      Esp8266
+#endif
+
+// Proto = DMA or BigBang
+#if defined(USE_WS2812_DMA) && defined(ESP8266)
+  #define NEO_PROTO     Dma
+#elif defined(USE_WS2812_RMT) && defined(ESP32)
+  #define NEO_PROTO     CONCAT2(Rmt,USE_WS2812_RMT)
+#elif defined(USE_WS2812_I2S) && defined(ESP32)
+  #define NEO_PROTO     CONCAT2(I2s,USE_WS2812_I2S)
+#else
+  #define NEO_PROTO     BitBang
+#endif
+
+#ifdef USE_WS2812_INVERTED
+  #define NEO_INV       Inverted
+#else
+  #define NEO_INV
+#endif
+
 #if (USE_WS2812_HARDWARE == NEO_HW_WS2812X)
-  typedef NeoEsp8266BitBangWs2812xInvertedMethod selectedNeoSpeedType;
+  #define NEO_HW        Ws2812x
 #elif (USE_WS2812_HARDWARE == NEO_HW_SK6812)
-  typedef NeoEsp8266BitBangSk6812InvertedMethod selectedNeoSpeedType;
+  #define NEO_HW        Sk6812
+#elif (USE_WS2812_HARDWARE == NEO_HW_APA106)
+  #define NEO_HW        Apa106
 #else   // USE_WS2812_HARDWARE
-  typedef NeoEsp8266BitBang400KbpsInvertedMethod selectedNeoSpeedType;
+  #define NEO_HW        800Kbps
 #endif  // USE_WS2812_HARDWARE
 
-#else  // No USE_WS2812_INVERTED
 
 #if (USE_WS2812_HARDWARE == NEO_HW_P9813)
-  typedef P9813Method selectedNeoSpeedType;
-#elif (USE_WS2812_HARDWARE == NEO_HW_WS2812X)
-  typedef NeoEsp8266BitBangWs2812xMethod selectedNeoSpeedType;
-#elif (USE_WS2812_HARDWARE == NEO_HW_SK6812)
-  typedef NeoEsp8266BitBangSk6812Method selectedNeoSpeedType;
-#else   // USE_WS2812_HARDWARE
-  typedef NeoEsp8266BitBang800KbpsMethod selectedNeoSpeedType;
-#endif  // USE_WS2812_HARDWARE
+  #undef NEO_NEO
+  #define NEO_NEO
+  #undef NEO_CHIP
+  #define NEO_CHIP
+  #undef NEO_PROTO
+  #define NEO_PROTO
+  #undef NEO_INV
+  #define NEO_INV
+  #undef NEO_HW
+  #define NEO_HW      P9813       // complete driver is P9813Method
+#endif
 
-#endif  // No USE_WS2812_INVERTED
-
-#endif  // No USE_WS2812_DMA
+#if defined(ESP8266) && defined(USE_WS2812_DMA)
+typedef CONCAT6(NEO_NEO,NEO_CHIP,NEO_PROTO,NEO_INV,NEO_HW,Method)   selectedNeoSpeedType;
+#else // Dma : different naming scheme
+typedef CONCAT6(NEO_NEO,NEO_CHIP,NEO_PROTO,NEO_HW,NEO_INV,Method)   selectedNeoSpeedType;
+#endif
 
 NeoPixelBus<selectedNeoFeatureType, selectedNeoSpeedType> *strip = nullptr;
 
@@ -184,8 +209,8 @@ void Ws2812StripShow(void)
   RgbColor c;
 #endif
 
-  if (Settings.light_correction) {
-    for (uint32_t i = 0; i < Settings.light_pixels; i++) {
+  if (Settings->light_correction) {
+    for (uint32_t i = 0; i < Settings->light_pixels; i++) {
       c = strip->GetPixelColor(i);
       c.R = ledGamma(c.R);
       c.G = ledGamma(c.G);
@@ -214,10 +239,10 @@ void Ws2812UpdatePixelColor(int position, struct WsColor hand_color, float offse
   RgbColor color;
 #endif
 
-  uint32_t mod_position = mod(position, (int)Settings.light_pixels);
+  uint32_t mod_position = mod(position, (int)Settings->light_pixels);
 
   color = strip->GetPixelColor(mod_position);
-  float dimmer = 100 / (float)Settings.light_dimmer;
+  float dimmer = 100 / (float)Settings->light_dimmer;
   color.R = tmin(color.R + ((hand_color.red / dimmer) * offset), 255);
   color.G = tmin(color.G + ((hand_color.green / dimmer) * offset), 255);
   color.B = tmin(color.B + ((hand_color.blue / dimmer) * offset), 255);
@@ -226,16 +251,16 @@ void Ws2812UpdatePixelColor(int position, struct WsColor hand_color, float offse
 
 void Ws2812UpdateHand(int position, uint32_t index)
 {
-  uint32_t width = Settings.light_width;
-  if (index < WS_MARKER) { width = Settings.ws_width[index]; }
+  uint32_t width = Settings->light_width;
+  if (index < WS_MARKER) { width = Settings->ws_width[index]; }
   if (!width) { return; }  // Skip
 
-  position = (position + Settings.light_rotation) % Settings.light_pixels;
+  position = (position + Settings->light_rotation) % Settings->light_pixels;
 
-  if (Settings.flag.ws_clock_reverse) {  // SetOption16 - Switch between clockwise or counter-clockwise
-    position = Settings.light_pixels -position;
+  if (Settings->flag.ws_clock_reverse) {  // SetOption16 - Switch between clockwise or counter-clockwise
+    position = Settings->light_pixels -position;
   }
-  WsColor hand_color = { Settings.ws_color[index][WS_RED], Settings.ws_color[index][WS_GREEN], Settings.ws_color[index][WS_BLUE] };
+  WsColor hand_color = { Settings->ws_color[index][WS_RED], Settings->ws_color[index][WS_GREEN], Settings->ws_color[index][WS_BLUE] };
 
   Ws2812UpdatePixelColor(position, hand_color, 1);
 
@@ -250,12 +275,12 @@ void Ws2812UpdateHand(int position, uint32_t index)
 void Ws2812Clock(void)
 {
   strip->ClearTo(0); // Reset strip
-  int clksize = 60000 / (int)Settings.light_pixels;
+  int clksize = 60000 / (int)Settings->light_pixels;
 
   Ws2812UpdateHand((RtcTime.second * 1000) / clksize, WS_SECOND);
   Ws2812UpdateHand((RtcTime.minute * 1000) / clksize, WS_MINUTE);
   Ws2812UpdateHand((((RtcTime.hour % 12) * 5000) + ((RtcTime.minute * 1000) / 12 )) / clksize, WS_HOUR);
-  if (Settings.ws_color[WS_MARKER][WS_RED] + Settings.ws_color[WS_MARKER][WS_GREEN] + Settings.ws_color[WS_MARKER][WS_BLUE]) {
+  if (Settings->ws_color[WS_MARKER][WS_RED] + Settings->ws_color[WS_MARKER][WS_GREEN] + Settings->ws_color[WS_MARKER][WS_BLUE]) {
     for (uint32_t i = 0; i < 12; i++) {
       Ws2812UpdateHand((i * 5000) / clksize, WS_MARKER);
     }
@@ -280,7 +305,7 @@ void Ws2812GradientColor(uint32_t schemenr, struct WsColor* mColor, uint32_t ran
     start = (scheme.count -1) - start;
     end = (scheme.count -1) - end;
   }
-  float dimmer = 100 / (float)Settings.light_dimmer;
+  float dimmer = 100 / (float)Settings->light_dimmer;
   float fmyRed = (float)wsmap(rangeIndex % gradRange, 0, gradRange, scheme.colors[start].red, scheme.colors[end].red) / dimmer;
   float fmyGrn = (float)wsmap(rangeIndex % gradRange, 0, gradRange, scheme.colors[start].green, scheme.colors[end].green) / dimmer;
   float fmyBlu = (float)wsmap(rangeIndex % gradRange, 0, gradRange, scheme.colors[start].blue, scheme.colors[end].blue) / dimmer;
@@ -306,18 +331,18 @@ void Ws2812Gradient(uint32_t schemenr)
   ColorScheme scheme = kSchemes[schemenr];
   if (scheme.count < 2) { return; }
 
-  uint32_t repeat = kWsRepeat[Settings.light_width];  // number of scheme.count per ledcount
-  uint32_t range = (uint32_t)ceil((float)Settings.light_pixels / (float)repeat);
+  uint32_t repeat = kWsRepeat[Settings->light_width];  // number of scheme.count per ledcount
+  uint32_t range = (uint32_t)ceil((float)Settings->light_pixels / (float)repeat);
   uint32_t gradRange = (uint32_t)ceil((float)range / (float)(scheme.count - 1));
-  uint32_t speed = ((Settings.light_speed * 2) -1) * (STATES / 10);
+  uint32_t speed = ((Settings->light_speed * 2) -1) * (STATES / 10);
   uint32_t offset = speed > 0 ? Light.strip_timer_counter / speed : 0;
 
   WsColor oldColor, currentColor;
   Ws2812GradientColor(schemenr, &oldColor, range, gradRange, offset);
   currentColor = oldColor;
   speed = speed ? speed : 1;    // should never happen, just avoid div0
-  for (uint32_t i = 0; i < Settings.light_pixels; i++) {
-    if (kWsRepeat[Settings.light_width] > 1) {
+  for (uint32_t i = 0; i < Settings->light_pixels; i++) {
+    if (kWsRepeat[Settings->light_width] > 1) {
       Ws2812GradientColor(schemenr, &currentColor, range, gradRange, i + offset + 1);
     }
     // Blend old and current color based on time for smooth movement.
@@ -346,15 +371,15 @@ void Ws2812Bars(uint32_t schemenr)
 
   ColorScheme scheme = kSchemes[schemenr];
 
-  uint32_t maxSize = Settings.light_pixels / scheme.count;
-  if (kWidth[Settings.light_width] > maxSize) { maxSize = 0; }
+  uint32_t maxSize = Settings->light_pixels / scheme.count;
+  if (kWidth[Settings->light_width] > maxSize) { maxSize = 0; }
 
-  uint32_t speed = ((Settings.light_speed * 2) -1) * (STATES / 10);
+  uint32_t speed = ((Settings->light_speed * 2) -1) * (STATES / 10);
   uint32_t offset = (speed > 0) ? Light.strip_timer_counter / speed : 0;
 
   WsColor mcolor[scheme.count];
   memcpy(mcolor, scheme.colors, sizeof(mcolor));
-  float dimmer = 100 / (float)Settings.light_dimmer;
+  float dimmer = 100 / (float)Settings->light_dimmer;
   for (uint32_t i = 0; i < scheme.count; i++) {
     float fmyRed = (float)mcolor[i].red / dimmer;
     float fmyGrn = (float)mcolor[i].green / dimmer;
@@ -364,8 +389,8 @@ void Ws2812Bars(uint32_t schemenr)
     mcolor[i].blue = (uint8_t)fmyBlu;
   }
   uint32_t colorIndex = offset % scheme.count;
-  for (uint32_t i = 0; i < Settings.light_pixels; i++) {
-    if (maxSize) { colorIndex = ((i + offset) % (scheme.count * kWidth[Settings.light_width])) / kWidth[Settings.light_width]; }
+  for (uint32_t i = 0; i < Settings->light_pixels; i++) {
+    if (maxSize) { colorIndex = ((i + offset) % (scheme.count * kWidth[Settings->light_width])) / kWidth[Settings->light_width]; }
     c.R = mcolor[colorIndex].red;
     c.G = mcolor[colorIndex].green;
     c.B = mcolor[colorIndex].blue;
@@ -397,7 +422,7 @@ void Ws2812SetColor(uint32_t led, uint8_t red, uint8_t green, uint8_t blue, uint
     strip->SetPixelColor(led -1, lcolor);  // Led 1 is strip Led 0 -> substract offset 1
   } else {
 //    strip->ClearTo(lcolor);  // Set WS2812_MAX_LEDS pixels
-    for (uint32_t i = 0; i < Settings.light_pixels; i++) {
+    for (uint32_t i = 0; i < Settings->light_pixels; i++) {
       strip->SetPixelColor(i, lcolor);
     }
   }
@@ -423,7 +448,7 @@ char* Ws2812GetColor(uint32_t led, char* scolor)
   sl_ledcolor[2] = lcolor.B;
   scolor[0] = '\0';
   for (uint32_t i = 0; i < Light.subtype; i++) {
-    if (Settings.flag.decimal_text) {  // SetOption17 - Switch between decimal or hexadecimal output (0 = hexadecimal, 1 = decimal)
+    if (Settings->flag.decimal_text) {  // SetOption17 - Switch between decimal or hexadecimal output (0 = hexadecimal, 1 = decimal)
       snprintf_P(scolor, 25, PSTR("%s%s%d"), scolor, (i > 0) ? "," : "", sl_ledcolor[i]);
     } else {
       snprintf_P(scolor, 25, PSTR("%s%02X"), scolor, sl_ledcolor[i]);
@@ -461,7 +486,7 @@ bool Ws2812SetChannels(void)
 
 void Ws2812ShowScheme(void)
 {
-  uint32_t scheme = Settings.light_scheme - Ws2812.scheme_offset;
+  uint32_t scheme = Settings->light_scheme - Ws2812.scheme_offset;
 
   switch (scheme) {
     case 0:  // Clock
@@ -471,7 +496,7 @@ void Ws2812ShowScheme(void)
       }
       break;
     default:
-      if (1 == Settings.light_fade) {
+      if (1 == Settings->light_fade) {
         Ws2812Gradient(scheme -1);
       } else {
         Ws2812Bars(scheme -1);
@@ -511,7 +536,7 @@ void Ws2812ModuleSelected(void)
 
 void CmndLed(void)
 {
-  if ((XdrvMailbox.index > 0) && (XdrvMailbox.index <= Settings.light_pixels)) {
+  if ((XdrvMailbox.index > 0) && (XdrvMailbox.index <= Settings->light_pixels)) {
     if (XdrvMailbox.data_len > 0) {
       char *p;
       uint16_t idx = XdrvMailbox.index;
@@ -520,7 +545,7 @@ void CmndLed(void)
         if (LightColorEntry(color, strlen(color))) {
           Ws2812SetColor(idx, Light.entry_color[0], Light.entry_color[1], Light.entry_color[2], Light.entry_color[3]);
           idx++;
-          if (idx > Settings.light_pixels) { break; }
+          if (idx > Settings->light_pixels) { break; }
         } else {
           break;
         }
@@ -535,20 +560,20 @@ void CmndLed(void)
 void CmndPixels(void)
 {
   if ((XdrvMailbox.payload > 0) && (XdrvMailbox.payload <= WS2812_MAX_LEDS)) {
-    Settings.light_pixels = XdrvMailbox.payload;
-    Settings.light_rotation = 0;
+    Settings->light_pixels = XdrvMailbox.payload;
+    Settings->light_rotation = 0;
     Ws2812Clear();
     Light.update = true;
   }
-  ResponseCmndNumber(Settings.light_pixels);
+  ResponseCmndNumber(Settings->light_pixels);
 }
 
 void CmndRotation(void)
 {
-  if ((XdrvMailbox.payload >= 0) && (XdrvMailbox.payload < Settings.light_pixels)) {
-    Settings.light_rotation = XdrvMailbox.payload;
+  if ((XdrvMailbox.payload >= 0) && (XdrvMailbox.payload < Settings->light_pixels)) {
+    Settings->light_rotation = XdrvMailbox.payload;
   }
-  ResponseCmndNumber(Settings.light_rotation);
+  ResponseCmndNumber(Settings->light_rotation);
 }
 
 void CmndWidth(void)
@@ -556,14 +581,14 @@ void CmndWidth(void)
   if ((XdrvMailbox.index > 0) && (XdrvMailbox.index <= 4)) {
     if (1 == XdrvMailbox.index) {
       if ((XdrvMailbox.payload >= 0) && (XdrvMailbox.payload <= 4)) {
-        Settings.light_width = XdrvMailbox.payload;
+        Settings->light_width = XdrvMailbox.payload;
       }
-      ResponseCmndNumber(Settings.light_width);
+      ResponseCmndNumber(Settings->light_width);
     } else {
       if ((XdrvMailbox.payload >= 0) && (XdrvMailbox.payload < 32)) {
-        Settings.ws_width[XdrvMailbox.index -2] = XdrvMailbox.payload;
+        Settings->ws_width[XdrvMailbox.index -2] = XdrvMailbox.payload;
       }
-      ResponseCmndIdxNumber(Settings.ws_width[XdrvMailbox.index -2]);
+      ResponseCmndIdxNumber(Settings->ws_width[XdrvMailbox.index -2]);
     }
   }
 }

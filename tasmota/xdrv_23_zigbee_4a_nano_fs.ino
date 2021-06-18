@@ -18,10 +18,23 @@
 */
 
 #ifdef USE_ZIGBEE
-#ifdef USE_ZIGBEE_EZSP
 
 // #define Z_EEPROM_DEBUG
 
+
+const static uint32_t ZIGB_NAME1 = 0x3167697A; // 'zig1' little endian
+const static uint32_t ZIGB_NAME2 = 0x3267697A; // 'zig2' little endian, v2
+const static uint32_t ZIGB_DATA2 = 0x32746164; // 'dat2' little endian, v2
+extern FS *dfsp;
+extern "C" uint32_t _FS_end;
+// Is it ok to write to bank 0x402FF000
+bool flash_valid(void) {
+  return (((uint32_t)&_FS_end) > 0x40280000) && (((uint32_t)&_FS_end) < 0x402FF000);
+}
+
+void hydrateSingleDevice(const SBuffer & buf_d);
+
+#ifdef USE_ZIGBEE_EEPROM
 // The EEPROM is 64KB in size with individually writable bytes.
 // They are conveniently organized in pages of 128 bytes to accelerate
 // data transfer, but unlike flash memory, you don't need to erase an entire page.
@@ -243,7 +256,11 @@ public:
   uint8_t   blk_start;      // if 0x00 then file does not exist
   uint8_t   entry_idx;      // entry number in the directory
 
-  ZFS_Write_File(uint32_t _name) : name(_name), cursor(0), length(0), blk_start(0) { findOrCreate(); }
+  ZFS_Write_File(void) : name(0), cursor(0), length(0), blk_start(0) {}
+  void init(uint32_t _name) {
+    name = _name;
+    findOrCreate();
+  }
 
   inline bool valid(void) const { return blk_start != 0; }       // does the file exist?
 
@@ -291,7 +308,7 @@ bool ZFS::findFileEntry(uint32_t name, ZFS_File_Entry & entry, uint8_t * _entry_
 #ifdef Z_EEPROM_DEBUG
     // {
     //   char hex_char[(sizeof(ZFS_File_Entry) * 2) + 2];
-    //   AddLog_P(LOG_LEVEL_INFO, PSTR(D_LOG_ZIGBEE "Read entry %d at address 0x%04X contains %*_H"), entry_idx, entry_addr, sizeof(entry), &entry);
+    //   AddLog(LOG_LEVEL_INFO, PSTR(D_LOG_ZIGBEE "Read entry %d at address 0x%04X contains %*_H"), entry_idx, entry_addr, sizeof(entry), &entry);
     // }
 #endif
     if (entry.name == name) {
@@ -324,7 +341,7 @@ void ZFS::erase(void) {
 int32_t ZFS::readBytes(uint32_t name, void* buffer, size_t buffer_len, uint16_t read_start, uint16_t read_len) {
   if (!zigbee.eeprom_ready) { return -1; }
 #ifdef Z_EEPROM_DEBUG
-    // AddLog_P(LOG_LEVEL_INFO, PSTR(D_LOG_ZIGBEE "readBytes name=%08X, buffer_len=%d, read_start=0x%04X, read_len=%d"), name, buffer_len, read_start, read_len);
+    // AddLog(LOG_LEVEL_INFO, PSTR(D_LOG_ZIGBEE "readBytes name=%08X, buffer_len=%d, read_start=0x%04X, read_len=%d"), name, buffer_len, read_start, read_len);
 #endif
   if (name == 0x00000000) { return -1; }
   if (buffer_len == 0) { return 0; }
@@ -358,20 +375,20 @@ void ZFS::initOrFormat(void) {
   if (!zigbee.eeprom_present) { return; }
 
 #ifdef Z_EEPROM_DEBUG
-  // AddLog_P(LOG_LEVEL_INFO, PSTR(D_LOG_ZIGBEE "sizeof(ZFS_Bitmap)=%d sizeof(ZFS_File_Entry)=%d sizeof(ZFS_Root_Entry)=%d sizeof(ZFS_Dir_Block)=%d"), sizeof(ZFS_Bitmap), sizeof(ZFS_File_Entry), sizeof(ZFS_Root_Entry), sizeof(ZFS_Dir_Block));
+  // AddLog(LOG_LEVEL_INFO, PSTR(D_LOG_ZIGBEE "sizeof(ZFS_Bitmap)=%d sizeof(ZFS_File_Entry)=%d sizeof(ZFS_Root_Entry)=%d sizeof(ZFS_Dir_Block)=%d"), sizeof(ZFS_Bitmap), sizeof(ZFS_File_Entry), sizeof(ZFS_Root_Entry), sizeof(ZFS_Dir_Block));
   {
     byte map[256];
     char hex_char[(256 * 2) + 2];
     zigbee.eeprom.readBytes(0x0000, 256, map);
-    AddLog_P(LOG_LEVEL_INFO, PSTR(D_LOG_ZIGBEE "BLK 00 %s"), ToHex_P(map, sizeof(map), hex_char, sizeof(hex_char)));
+    AddLog(LOG_LEVEL_INFO, PSTR(D_LOG_ZIGBEE "BLK 00 %s"), ToHex_P(map, sizeof(map), hex_char, sizeof(hex_char)));
     // zigbee.eeprom.readBytes(0x0100, 256, map);
-    // AddLog_P(LOG_LEVEL_INFO, PSTR(D_LOG_ZIGBEE "BLK 01 %s"), ToHex_P(map, sizeof(map), hex_char, sizeof(hex_char)));
+    // AddLog(LOG_LEVEL_INFO, PSTR(D_LOG_ZIGBEE "BLK 01 %s"), ToHex_P(map, sizeof(map), hex_char, sizeof(hex_char)));
     zigbee.eeprom.readBytes(0x0200, 256, map);
-    AddLog_P(LOG_LEVEL_INFO, PSTR(D_LOG_ZIGBEE "BLK 02 %s"), ToHex_P(map, sizeof(map), hex_char, sizeof(hex_char)));
+    AddLog(LOG_LEVEL_INFO, PSTR(D_LOG_ZIGBEE "BLK 02 %s"), ToHex_P(map, sizeof(map), hex_char, sizeof(hex_char)));
     zigbee.eeprom.readBytes(0x2100, 256, map);
-    AddLog_P(LOG_LEVEL_INFO, PSTR(D_LOG_ZIGBEE "BLK 21 %s"), ToHex_P(map, sizeof(map), hex_char, sizeof(hex_char)));
+    AddLog(LOG_LEVEL_INFO, PSTR(D_LOG_ZIGBEE "BLK 21 %s"), ToHex_P(map, sizeof(map), hex_char, sizeof(hex_char)));
     // zigbee.eeprom.readBytes(0xFF00, 256, map);
-    // AddLog_P(LOG_LEVEL_INFO, PSTR(D_LOG_ZIGBEE "BLK FF %s"), ToHex_P(map, sizeof(map), hex_char, sizeof(hex_char)));
+    // AddLog(LOG_LEVEL_INFO, PSTR(D_LOG_ZIGBEE "BLK FF %s"), ToHex_P(map, sizeof(map), hex_char, sizeof(hex_char)));
   }
 #endif
 
@@ -380,9 +397,9 @@ void ZFS::initOrFormat(void) {
 
   if (dir->b0.signature == ZFS_SIGNATURE) {
     // Good
-    AddLog_P(LOG_LEVEL_DEBUG, PSTR(D_LOG_ZIGBEE "EEPROM signature 0x%08X is correct"), dir->b0.signature);
+    AddLog(LOG_LEVEL_DEBUG, PSTR(D_LOG_ZIGBEE "EEPROM signature 0x%08X is correct"), dir->b0.signature);
   } else {
-    AddLog_P(LOG_LEVEL_DEBUG, PSTR(D_LOG_ZIGBEE "EEPROM signature 0x%08X is incorrect, formatting"), dir->b0.signature);
+    AddLog(LOG_LEVEL_DEBUG, PSTR(D_LOG_ZIGBEE "EEPROM signature 0x%08X is incorrect, formatting"), dir->b0.signature);
     format();
   }
   delete dir;
@@ -394,7 +411,7 @@ void ZFS::initOrFormat(void) {
 // Format EEPROM
 //
 void ZFS::format(void) {
-  AddLog_P(LOG_LEVEL_INFO, PSTR(D_LOG_ZIGBEE "Formatting EEPROM"));
+  AddLog(LOG_LEVEL_INFO, PSTR(D_LOG_ZIGBEE "Formatting EEPROM"));
 
   // First write the bitmap
   ZFS_Bitmap * bitmap = new ZFS_Bitmap();
@@ -438,7 +455,7 @@ int32_t ZFS_Write_File::addBytes(void* buffer, size_t buffer_len) {
   if (length + buffer_len > ZFS_FILE_BLOCKS * 256) { return -1; }   // exceeded max size
 
 // #ifdef Z_EEPROM_DEBUG
-//   AddLog_P(LOG_LEVEL_INFO, PSTR(D_LOG_ZIGBEE "eeprom.writeBytes address=0x%04X, len=%d"), (blk_start << 8) + length, buffer_len);
+//   AddLog(LOG_LEVEL_INFO, PSTR(D_LOG_ZIGBEE "eeprom.writeBytes address=0x%04X, len=%d"), (blk_start << 8) + length, buffer_len);
 // #endif
   zigbee.eeprom.writeBytes((blk_start << 8) + length, buffer_len, (byte*)buffer);
   length += buffer_len;
@@ -453,5 +470,238 @@ int32_t ZFS_Write_File::close(void) {
   return length;
 }
 
-#endif // USE_ZIGBEE_EZSP
+
+#endif // USE_ZIGBEE_EEPROM
+
+
+/*********************************************************************************************\
+ *
+ * Generic for Reading a file
+ *
+ * Can work in 3 modes:
+ * - if passed a filename, use the ZFS for EEPROM nano-fs
+ * - if passed a File* object, use this object
+ * - if passed a buffer, read from a binary buffer in RAM
+\*********************************************************************************************/
+
+class Univ_Read_File {
+public:
+  // file info
+  uint16_t  len = 0;
+  uint16_t  cursor = 0;
+  bool      is_valid = false;
+
+  Univ_Read_File(void) {}
+
+  // == EEPROM ================================================
+#ifdef USE_ZIGBEE_EEPROM
+  uint32_t  eeprom_name = 0;
+  ZFS_File_Entry entry;
+  // uint16_t  length;
+  // uint8_t   blk_start;      // if 0x00 then file does not exist
+  uint8_t   entry_idx;      // entry number in the directory
+
+  void init(uint32_t _name) {
+    eeprom_name = _name;
+    if (ZFS::findFileEntry(eeprom_name, entry, &entry_idx)) {
+      len = ZFS::getLength(eeprom_name);
+      is_valid = (len > 0);
+    }
+  }
+#endif // USE_ZIGBEE_EEPROM
+
+  // == File ================================================
+#ifdef USE_UFILESYS
+  File * file = nullptr;
+
+  void init(File * _file) {
+    file = _file;
+    is_valid = (bool) *file;
+    len = file->size();
+  }
+#endif
+
+#ifdef ESP8266
+  // == Buffer ================================================
+  // binary buffer
+  const uint8_t * buffer = nullptr;
+  void init(const uint8_t * buf, size_t buflen) {
+    buffer = buf;
+    len = buflen;
+    is_valid = (buffer != nullptr) && (len > 0);
+  }
+#endif // ESP8266
+  
+
+  // ==================================================
+  inline bool valid(void) const { return is_valid; }       // does the file exist?
+
+  int32_t readBytes(uint8_t* buf, size_t buflen);
+  void close(void);
+};
+
+void Univ_Read_File::close(void) {
+#ifdef USE_UFILESYS
+  if (file != nullptr) {
+    file->close();
+  }
+#endif // USE_UFILESYS
+  // don't do anything for ZFS read of buffer
+}
+
+int32_t Univ_Read_File::readBytes(uint8_t* buf, size_t btr) {
+  if (!is_valid) { return -1; }
+#ifdef USE_UFILESYS
+  if (file != nullptr) {
+    return file->read(buf, btr);
+  }
+#endif // USE_UFILESYS
+#ifdef USE_ZIGBEE_EEPROM
+  if (eeprom_name != 0) {
+    int32_t bytes_read = ZFS::readBytes(eeprom_name, buf, btr, cursor, btr);
+    if (bytes_read < 0) { return -1; }
+    cursor += bytes_read;
+    return bytes_read;
+  }
+#endif // USE_ZIGBEE_EEPROM
+
+#ifdef ESP8266
+  // binary buffer
+  if (buffer != nullptr)  {
+    if (btr > len - cursor) { btr = len - cursor; }
+    memcpy_P(buf, buffer + cursor, btr);
+    cursor += btr;
+    return btr;
+  }
+#endif // ESP8266
+
+  return -1;
+}
+
+
+/*********************************************************************************************\
+ *
+ * Generic for Writing a file
+ *
+ * Can work in 3 modes:
+ * - if passed a filename, use the ZFS for EEPROM nano-fs
+ * - if passed a File* object, use this object
+ * - if passed a buffer, write to a binary buffer in RAM
+\*********************************************************************************************/
+
+class Univ_Write_File {
+public:
+  // file info
+  bool      is_valid = false;
+
+  Univ_Write_File(void) {}
+
+  // == EEPROM ================================================
+#ifdef USE_ZIGBEE_EEPROM
+  ZFS_Write_File eeprom_file;
+
+  void init(uint32_t _name) {
+    eeprom_file.init(_name);
+    is_valid = eeprom_file.valid();
+  }
+#endif // USE_ZIGBEE_EEPROM
+
+  // == File ================================================
+#ifdef USE_UFILESYS
+  File * file = nullptr;
+
+  void init(File * _file) {
+    file = _file;
+    is_valid = (bool) *file;
+  }
+#endif
+
+#ifdef ESP8266
+  // == Buffer ================================================
+  // binary buffer
+  size_t buflen = 0;
+  uint8_t * buffer = nullptr;
+  uint16_t  cursor = 0;
+  void init(uint8_t * buf, size_t _buflen) {
+    buffer = buf;
+    buflen = _buflen;
+    is_valid = (buffer != nullptr) && (buflen > 0);
+  }
+#endif // ESP8266
+
+  // ==================================================
+  inline bool valid(void) const { return is_valid; }       // does the file exist?
+
+  int32_t writeBytes(uint8_t* buf, size_t buflen);
+  int32_t getCursor(void);
+  void close(void);
+};
+
+void Univ_Write_File::close(void) {
+#ifdef USE_UFILESYS
+  if (file != nullptr) {
+    file->close();
+  }
+#endif // USE_UFILESYS
+#ifdef USE_ZIGBEE_EEPROM
+  if (eeprom_file.valid()) {
+    eeprom_file.close();
+  }
+#endif // USE_ZIGBEE_EEPROM
+  // binary buffer doesn't need a close
+}
+
+int32_t Univ_Write_File::getCursor(void) {
+  if (!is_valid) { return -1; }
+
+#ifdef USE_UFILESYS
+  if (file != nullptr) {
+    return file->position();
+  }
+#endif // USE_UFILESYS
+#ifdef USE_ZIGBEE_EEPROM
+  if (eeprom_file.valid()) {
+    return eeprom_file.length;
+  }
+#endif // USE_ZIGBEE_EEPROM
+
+#ifdef ESP8266
+  if (buffer != nullptr) {
+    return cursor;
+  }
+#endif // ESP8266
+
+  return -1;
+}
+
+int32_t Univ_Write_File::writeBytes(uint8_t* buf, size_t btw) {
+  if (!is_valid) { return -1; }
+
+#ifdef USE_UFILESYS
+  if (file != nullptr) {
+    return file->write(buf, btw);
+  }
+#endif // USE_UFILESYS
+#ifdef USE_ZIGBEE_EEPROM
+  if (eeprom_file.valid()) {
+    uint16_t length_before = eeprom_file.length;
+    eeprom_file.addBytes(buf, btw);
+    return eeprom_file.length - length_before;    // compute the increase in size
+  }
+#endif // USE_ZIGBEE_EEPROM
+
+#ifdef ESP8266
+  if (buffer != nullptr) {
+    // binary buffer
+    if (btw > buflen - cursor) { btw = buflen - cursor; }
+    memcpy_P(buffer + cursor, buf, btw);
+    cursor += btw;
+    return btw;
+  }
+#endif // ESP8266
+
+  return -1;
+}
+
+
 #endif // USE_ZIGBEE

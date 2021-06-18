@@ -25,17 +25,13 @@
 \*********************************************************************************************/
 
 #define XFUNC_PTR_IN_ROM                    // Enable for keeping tables in ROM (PROGMEM) which seem to have access issues on some flash types
+#define MQTT_DATA_STRING                    // Use heap instead of fixed memory for TasmotaGlobal.mqtt_data
 
 /*********************************************************************************************\
- * Default sensor states
+ * Default image
 \*********************************************************************************************/
 
 #define CODE_IMAGE_STR "tasmota"
-
-#define USE_LIGHT                           // Enable light control
-#define USE_ENERGY_SENSOR                   // Use energy sensors (+14k code)
-#define USE_HLW8012                         // Use energy sensor for Sonoff Pow and WolfBlitz
-#define USE_CSE7766                         // Use energy sensor for Sonoff S31 and Pow R2
 
 /*********************************************************************************************\
  * Power Type
@@ -83,6 +79,17 @@ const uint8_t MAX_SHUTTER_KEYS = 4;         // Max number of shutter keys or but
 const uint8_t MAX_PCF8574 = 4;              // Max number of PCF8574 devices
 const uint8_t MAX_RULE_SETS = 3;            // Max number of rule sets of size 512 characters
 const uint16_t MAX_RULE_SIZE = 512;         // Max number of characters in rules
+const uint16_t VL53L0X_MAX_SENSORS = 8;     // Max number of VL53L0X sensors
+
+#ifdef ESP32
+const uint8_t MAX_I2C = 2;                  // Max number of I2C controllers (ESP32 = 2)
+const uint8_t MAX_SPI = 2;                  // Max number of Hardware SPI controllers (ESP32 = 2)
+const uint8_t MAX_I2S = 2;                  // Max number of Hardware I2S controllers (ESP32 = 2)
+#else
+const uint8_t MAX_I2C = 0;                  // Max number of I2C controllers (ESP8266 = 0, no choice)
+const uint8_t MAX_SPI = 0;                  // Max number of Hardware SPI controllers (ESP8266 = 0, no choice)
+const uint8_t MAX_I2S = 0;                  // Max number of Hardware I2S controllers (ESP8266 = 0, no choice)
+#endif
 
 // Changes to the following MAX_ defines need to be in line with enum SettingsTextIndex
 const uint8_t MAX_MQTT_PREFIXES = 3;        // Max number of MQTT prefixes (cmnd, stat, tele)
@@ -94,6 +101,9 @@ const uint8_t MAX_FRIENDLYNAMES = 8;        // Max number of Friendly names
 const uint8_t MAX_BUTTON_TEXT = 16;         // Max number of GUI button labels
 const uint8_t MAX_GROUP_TOPICS = 4;         // Max number of Group Topics
 const uint8_t MAX_DEV_GROUP_NAMES = 4;      // Max number of Device Group names
+
+const static char kWifiPhyMode[] PROGMEM = " bgnl"; // Wi-Fi Modes
+
 #ifdef ESP8266
 const uint8_t MAX_ADCS = 1;                 // Max number of ESP8266 ADC pins
 const uint8_t MAX_SWITCHES_TXT = 8;         // Max number of switches user text
@@ -157,9 +167,23 @@ const uint16_t INPUT_BUFFER_SIZE = 520;     // Max number of characters in seria
 const uint16_t FLOATSZ = 16;                // Max number of characters in float result from dtostrfd (max 32)
 const uint16_t CMDSZ = 24;                  // Max number of characters in command
 const uint16_t TOPSZ = 151;                 // Max number of characters in topic string
-const uint16_t LOGSZ = 128;                 // Max number of characters in AddLog_P log
-const uint16_t MAX_LOGSZ = 700;             // Max number of characters in log
-const uint16_t MIN_MESSZ = 1040;            // Min number of characters in MQTT message (1200 - TOPSZ - 9 header bytes)
+
+#ifdef ESP8266
+#ifdef PIO_FRAMEWORK_ARDUINO_MMU_CACHE16_IRAM48_SECHEAP_SHARED
+const uint16_t LOG_BUFFER_SIZE = 4096;      // Max number of characters in logbuffer used by weblog, syslog and mqttlog
+//const uint16_t LOG_BUFFER_SIZE = 6144;      // Max number of characters in logbuffer used by weblog, syslog and mqttlog
+#else
+const uint16_t LOG_BUFFER_SIZE = 4096;      // Max number of characters in logbuffer used by weblog, syslog and mqttlog
+#endif  // PIO_FRAMEWORK_ARDUINO_MMU_CACHE16_IRAM48_SECHEAP_SHARED
+#else   // Not ESP8266
+const uint16_t LOG_BUFFER_SIZE = 6144;      // Max number of characters in logbuffer used by weblog, syslog and mqttlog
+#endif  // ESP8266
+
+#ifdef MQTT_DATA_STRING
+const uint16_t MAX_LOGSZ = LOG_BUFFER_SIZE -96;  // Max number of characters in log line - may be overruled which will truncate log entry
+#else
+const uint16_t MAX_LOGSZ = 700;             // Max number of characters in log line
+#endif
 
 const uint8_t SENSOR_MAX_MISS = 5;          // Max number of missed sensor reads before deciding it's offline
 
@@ -227,7 +251,7 @@ const uint32_t LOOP_SLEEP_DELAY = 50;       // Lowest number of milliseconds to 
 #define KNX_ENERGY_POWER       21
 #define KNX_ENERGY_POWERFACTOR 22
 #define KNX_ENERGY_DAILY       23
-#define KNX_ENERGY_START       24
+#define KNX_ENERGY_YESTERDAY   24
 #define KNX_ENERGY_TOTAL       25
 #define KNX_SLOT1              26
 #define KNX_SLOT2              27
@@ -238,6 +262,11 @@ const uint32_t LOOP_SLEEP_DELAY = 50;       // Lowest number of milliseconds to 
 #define KNX_MAX_device_param   31
 #define MAX_KNXTX_CMNDS        5
 
+// XPT2046 resistive touch driver min/max raw values
+#define	XPT2046_MINX			192
+#define XPT2046_MAXX			3895
+#define XPT2046_MINY			346
+#define	XPT2046_MAXY			3870
 /*********************************************************************************************\
  * Enumeration
 \*********************************************************************************************/
@@ -260,6 +289,8 @@ enum LedStateOptions {LED_OFF, LED_POWER, LED_MQTTSUB, LED_POWER_MQTTSUB, LED_MQ
 enum EmulationOptions {EMUL_NONE, EMUL_WEMO, EMUL_HUE, EMUL_MAX};
 
 enum TopicOptions { CMND, STAT, TELE, nu1, RESULT_OR_CMND, RESULT_OR_STAT, RESULT_OR_TELE };
+
+enum UploadTypes { UPL_TASMOTA = 1, UPL_SETTINGS, UPL_EFM8BB1, UPL_TASMOTACLIENT, UPL_EFR32, UPL_SHD, UPL_CCL, UPL_UFSFILE };
 
 enum ExecuteCommandPowerOptions { POWER_OFF, POWER_ON, POWER_TOGGLE, POWER_BLINK, POWER_BLINK_STOP,
                                   POWER_OFF_NO_STATE = 8, POWER_ON_NO_STATE, POWER_TOGGLE_NO_STATE,
@@ -297,8 +328,8 @@ enum XsnsFunctions {FUNC_SETTINGS_OVERRIDE, FUNC_PIN_STATE, FUNC_MODULE_INIT, FU
                     FUNC_MQTT_SUBSCRIBE, FUNC_MQTT_INIT, FUNC_MQTT_DATA,
                     FUNC_SET_POWER, FUNC_SET_DEVICE_POWER, FUNC_SHOW_SENSOR, FUNC_ANY_KEY,
                     FUNC_ENERGY_EVERY_SECOND, FUNC_ENERGY_RESET,
-                    FUNC_RULES_PROCESS, FUNC_SERIAL, FUNC_FREE_MEM, FUNC_BUTTON_PRESSED,
-                    FUNC_WEB_ADD_BUTTON, FUNC_WEB_ADD_MANAGEMENT_BUTTON, FUNC_WEB_ADD_MAIN_BUTTON,
+                    FUNC_RULES_PROCESS, FUNC_TELEPERIOD_RULES_PROCESS, FUNC_SERIAL, FUNC_FREE_MEM, FUNC_BUTTON_PRESSED,
+                    FUNC_WEB_ADD_BUTTON, FUNC_WEB_ADD_CONSOLE_BUTTON, FUNC_WEB_ADD_MANAGEMENT_BUTTON, FUNC_WEB_ADD_MAIN_BUTTON,
                     FUNC_WEB_ADD_HANDLER, FUNC_SET_CHANNELS, FUNC_SET_SCHEME, FUNC_HOTPLUG_SCAN,
                     FUNC_DEVICE_GROUP_ITEM };
 
@@ -412,13 +443,13 @@ enum TuyaSupportedFunctions { TUYA_MCU_FUNC_NONE,
                                 TUYA_MCU_FUNC_REL6, TUYA_MCU_FUNC_REL7, TUYA_MCU_FUNC_REL8,
                               TUYA_MCU_FUNC_DIMMER = 21, TUYA_MCU_FUNC_DIMMER2, TUYA_MCU_FUNC_CT, TUYA_MCU_FUNC_RGB, TUYA_MCU_FUNC_WHITE,
                                 TUYA_MCU_FUNC_MODESET, TUYA_MCU_FUNC_REPORT1, TUYA_MCU_FUNC_REPORT2,
-                              TUYA_MCU_FUNC_POWER = 31, TUYA_MCU_FUNC_CURRENT, TUYA_MCU_FUNC_VOLTAGE, TUYA_MCU_FUNC_BATTERY_STATE, TUYA_MCU_FUNC_BATTERY_PERCENTAGE,
+                              TUYA_MCU_FUNC_POWER = 31, TUYA_MCU_FUNC_CURRENT, TUYA_MCU_FUNC_VOLTAGE, TUYA_MCU_FUNC_BATTERY_STATE, TUYA_MCU_FUNC_BATTERY_PERCENTAGE, TUYA_MCU_FUNC_POWER_COMBINED, TUYA_MCU_FUNC_POWER_TOTAL,
                               TUYA_MCU_FUNC_REL1_INV = 41, TUYA_MCU_FUNC_REL2_INV, TUYA_MCU_FUNC_REL3_INV, TUYA_MCU_FUNC_REL4_INV, TUYA_MCU_FUNC_REL5_INV,
                                 TUYA_MCU_FUNC_REL6_INV, TUYA_MCU_FUNC_REL7_INV, TUYA_MCU_FUNC_REL8_INV,
                               TUYA_MCU_FUNC_LOWPOWER_MODE = 51,
                               TUYA_MCU_FUNC_ENUM1 = 61, TUYA_MCU_FUNC_ENUM2, TUYA_MCU_FUNC_ENUM3, TUYA_MCU_FUNC_ENUM4,
                               TUYA_MCU_FUNC_TEMP = 71, TUYA_MCU_FUNC_TEMPSET, TUYA_MCU_FUNC_HUM, TUYA_MCU_FUNC_HUMSET,
-                              TUYA_MCU_FUNC_LX = 75, TUYA_MCU_FUNC_TVOC, TUYA_MCU_FUNC_CO2, TUYA_MCU_FUNC_ECO2,
+                              TUYA_MCU_FUNC_LX = 75, TUYA_MCU_FUNC_TVOC, TUYA_MCU_FUNC_CO2, TUYA_MCU_FUNC_ECO2, TUYA_MCU_FUNC_GAS,
                               TUYA_MCU_FUNC_TIMER1 = 81, TUYA_MCU_FUNC_TIMER2, TUYA_MCU_FUNC_TIMER3, TUYA_MCU_FUNC_TIMER4,
                               TUYA_MCU_FUNC_MOTOR_DIR = 97,
                               TUYA_MCU_FUNC_ERROR = 98,

@@ -31,6 +31,7 @@
 #define XNRG_03                  3
 
 const uint32_t PZEM_STABILIZE = 30;        // Number of seconds to stabilize configuration
+const uint32_t PZEM_RETRY = 5;             // Number of 250 ms retries
 
 #include <TasmotaSerial.h>
 
@@ -208,7 +209,7 @@ void PzemEvery250ms(void)
         Pzem.read_state = 1;
       }
 
-//      AddLog(LOG_LEVEL_DEBUG, PSTR("PZM: Retry %d"), 5 - Pzem.send_retry);
+//      AddLog(LOG_LEVEL_DEBUG, PSTR("PZM: Retry %d"), PZEM_RETRY - Pzem.send_retry);
     }
   }
 
@@ -227,13 +228,16 @@ void PzemEvery250ms(void)
       Pzem.read_state = 0;  // Set address
     }
 
-    Pzem.send_retry = 5;
+    Pzem.send_retry = PZEM_RETRY;
     PzemSend(pzem_commands[Pzem.read_state]);
   }
   else {
     Pzem.send_retry--;
     if ((Energy.phase_count > 1) && (0 == Pzem.send_retry) && (TasmotaGlobal.uptime < PZEM_STABILIZE)) {
       Energy.phase_count--;  // Decrement phases if no response after retry within 30 seconds after restart
+      if (TasmotaGlobal.discovery_counter) {
+        TasmotaGlobal.discovery_counter += (PZEM_RETRY / 4) + 1;  // Don't send Discovery yet, delay by 5 * 250ms + 1s
+      }
     }
   }
 }
@@ -246,7 +250,7 @@ void PzemSnsInit(void)
     if (PzemSerial->hardwareSerial()) {
       ClaimSerial();
     }
-    Energy.phase_count = 3;  // Start off with three phases
+    Energy.phase_count = ENERGY_MAX_PHASES;  // Start off with three phases
     Pzem.phase = 0;
     Pzem.read_state = 1;
   } else {
@@ -266,7 +270,7 @@ bool PzemCommand(void)
   bool serviced = true;
 
   if (CMND_MODULEADDRESS == Energy.command_code) {
-    if ((XdrvMailbox.payload > 0) && (XdrvMailbox.payload < 4)) {
+    if ((XdrvMailbox.payload > 0) && (XdrvMailbox.payload <= ENERGY_MAX_PHASES)) {
       Pzem.address = XdrvMailbox.payload;  // Valid addresses are 1, 2 and 3
     }
   }

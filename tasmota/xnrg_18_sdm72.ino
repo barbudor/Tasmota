@@ -110,7 +110,7 @@ void Sdm72Every250ms(void)
 #endif  //  SDM72_IMPEXP
       }
 
-      ++Sdm72.read_state %= ARRAY_SIZE(sdm72_register);
+      ++Sdm72.read_state %= nitems(sdm72_register);
       if (0 == Sdm72.read_state && !isnan(Sdm72.total_active)) {
         EnergyUpdateTotal(Sdm72.total_active, true);
       }
@@ -162,15 +162,15 @@ void Sdm72Show(bool json)
   if (json) {
 #ifdef SDM72_IMPEXP
      ResponseAppend_P(PSTR(",\"" D_JSON_EXPORT_POWER "\":%*_f,\"" D_JSON_IMPORT_POWER "\":%*_f"),
-      Settings.flag2.wattage_resolution, &Sdm72.export_power,
-      Settings.flag2.wattage_resolution, &Sdm72.import_power);
+      Settings->flag2.wattage_resolution, &Sdm72.export_power,
+      Settings->flag2.wattage_resolution, &Sdm72.import_power);
 #endif  // SDM72_IMPEXP
 #ifdef USE_WEBSERVER
   } else {
 #ifdef SDM72_IMPEXP
     WSContentSend_PD(HTTP_ENERGY_SDM72,
-      Settings.flag2.wattage_resolution, &Sdm72.export_power,
-      Settings.flag2.wattage_resolution, &Sdm72.import_power);
+      Settings->flag2.wattage_resolution, &Sdm72.export_power,
+      Settings->flag2.wattage_resolution, &Sdm72.import_power);
 #endif  // SDM72_IMPEXP
 #endif  // USE_WEBSERVER
   }

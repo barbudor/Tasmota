@@ -3,14 +3,213 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased] - Development
 
-## [9.3.1.1]
+## [9.5.0.1]
+### Changed
+- Force ESP32 defines USE_UFILESYS, GUI_TRASH_FILE and #define GUI_EDIT_FILE
 
 ## [Released]
+
+## [9.5.0] 20210617
+- Release Michael (Rossi)
+
+## [9.4.0.6] 20210617
+### Added
+- Command ``MqttWifiTimeout 100..20000`` to control MQTT Wi-Fi connection timeout default set to 200 mS (#12222)
+
+## [9.4.0.5] 20210615
+### Added
+- Preliminary support for Esp32C3 - RiscV based
+
+### Changed
+- NeoPixelBus library from v2.6.1.4 to v2.6.3 stage
+- Allow longer MQTT response messages by removing fixed memory buffer with size 1040 to heap allocated buffer
+- Command ``Timers`` layout of JSON message changed to single line
+- Command ``Gpio`` layout of JSON message changed to single line
+- Command ``Modules`` layout of JSON message changed to single line
+- I2C extended MPU6886 to also support MPU9250 (found in Legacy M5Stack Fire)
+- ESP32 increase log buffer from 4k to 6k to support longer messages
+- Move Settings from DRAM to heap
+- WifiManager save Wi-Fi configuration from settings, do it only once (#12242)
+- Improving SI7021 reading reliability by adjusting timers (#12256)
+- Refactor ESP32 partition selection, now via boards (#12257)
+- Refactor platformio configurations by Jason2866
+- Use correct template for Home Assistant light (#12317)
+
+## [9.4.0.4] 20210610
+### Added
+- Version bump to signal new features to Hass
+- Command ``Status0`` providing all status information on a single line
+- LVGL support for PNG images (#12148)
+- Update Sugar Valley Neopool driver (#12171)
+- Acer projector support (#12190)
+- I2S and Interrupt GPIO types (#12192)
+- Update OpenTherm driver (#12195)
+- Support for BM8563 RTC chip (I2C) found in M5Stack Core2 and M5StickC (#12199)
+- Command ``TuyaSend5`` for hex string (#12211)
+- Extend command ``Wifi`` with Wi-Fi Mode Control (#12292)
+
+### Changed
+- IRremoteESP8266 library from v2.7.16 to v2.7.18
+
+### Fixed
+- PING race condition breaks JSON in rule (#12106)
+- Support Tuya powermeter >6500W (#12115)
+- Zigbee max end-device (#12159)
+- Prevent keep state MCP230xx output fast toggle on reboot (#12264)
+- Tuya data type 2 read as 32 bit integer (instead of 16 bit) (#12282)
+
+## [9.4.0.3] 20210515
+### Added
+- Make Telegram command ``TmState`` persistent (#11965)
+- Zigbee firmware for Tube's Zigbee coordinator based on EFR32 and ESP32
+- Zigbee firmware 6.7.9 for Sonoff ZBBridge
+- Defines ``USER_RULE1``, ``USER_RULE2`` and ``USER_RULE3`` to store rules at compile time
+- Define ``USER_BACKLOG`` to store commands at compile time to be executed at firmware load or when executing command ``reset``
+- LVGL support for 3 buttons as rotary encoder (#12035)
+- LVGL support for touchscreen (#12039)
+- Allow home assistant discovery of MCP2300xx output as relay (#12037)
+- LVGL support for TrueType fonts via FreeType library (#12087)
+- LVGL support for PSRAM (#12062)
+- Support for voltage and current monitoring when using Shelly dimmer 2 hardware (#11988)
+- Support for Azure Device Provisioning Service for IoT Hub (#12056)
+- Commands ``Color2`` and ``Dimmer4`` to allow retaining brightness ratio between white and color channels when setting dimmer for linked lights (#12072)
+- Show new IP after the Wi-Fi Initial Config (#12091)
+
+### Fixed
+- Avoid erasing of Zigbee data if zigbee is not started (#11961)
+- Zigbee XModem retries (#11967)
+- Teleinfo standard mode and blacklist feature crash (#11991)
+- ESP32 Hue light (#12005)
+- Map received CCT channels back in DevGroups (#12044)
+- Increase TLS minimum stack thunk to 3800 bytes (#12063)
+- Delay discovery of PZEM sensors (#12076)
+
+### Changed
+- Shelly Dimmer 1 and 2 stm32 firmware from v51.5 to v51.6
+
+## [9.4.0.2] 20210430
+### Added
+- Initial support for optional ``Template`` JSON fieldpair ``"CMND":"<any template related command>|<any template related command>|..."`` (#11788)
+- ESP32 pulldown buttons ``Button_d`` and ``Button_id`` and switches ``Switch_d`` (#10814)
+- Support for MQTT using Azure IoT Hub by Kevin Saye (#11906)
+- Zigbee binary supporting cc25xx hardware on 4M flash hardware (#11872)
+
+### Fixed
+- Wrong flash size detection when saving Zigbee device information on ESP8266 (#11870)
+- Prometheus metrics parse error on DS18x20 (#11931)
+- DS18x20 name search id (#11958)
+
+## [9.4.0] 20210423
+- Release Leslie
+
+## [9.4.0.1] 20210423
+### Added
+- Command ``Wifi 0/1`` for ESP8266 to turn Wi-Fi Off and On. When Wi-Fi is Off it is always returned On after a restart except for a wake-up from deepsleep (#11839)
+
+### Changed
+- Zigbee refactored storage for device configuration and device last known data (#11838)
+
+### Fixed
+- Command ``Power`` should not reset pulsetime (#11805)
+- Teleperiod rule handling regression from v9.3.1.2 (#11851)
+
+## [9.3.1.4] 20210422
+### Added
+- Command ``TuyaTempSetRes 0..3`` to control Tuya Temperature Set Resolution (#11781)
+- ESP32 support for LVGL 7.11 with Berry binding by Stephan Hadinger (#11789)
+- Add ``Input`` GPIO type with no default action, to be read via Berry
+
+## [9.3.1.3] 20210419
+### Added
+- Optional GUI file editor enabled with define ``GUI_EDIT_FILE`` by barbudor (#11668)
+- Initial support for universal display driver UDisplay by Gerhard Mutz. Enable by selecting any GPIO as ``Option A3`` (#11665)
+
+### Breaking Changed
+- ESP32 partition layout changed to accomodate more file space on most and more code space on core2 and odroid-go (#11746)
+
+### Changed
+- In tasmota-sensors.bin enabled support for VL53L0X and disabled TSL2561 (#11711)
+- Add HLW8012/BL0937 average pulse calculation by Alex Lovett (#11722)
+- Redesigned initial GUI Wi-Fi configuration by Adrian Scillato (#11693)
+- Redesigned GUI by moving non-configuration buttons from ``Configuration`` to new submenu ``Consoles``
+
+### Fixed
+- Telegram chat id incorrect size (#11660)
+- KNX energy yesterday (#11718)
+
+## [9.3.1.2] 20210413
+### Added
+- Commands ``MqttKeepAlive 1..100`` to set Mqtt Keep Alive timer (default 30) and ``MqttTimeout 1..100`` to set Mqtt Socket Timeout (default 4) (#5341)
+- Commands ``DisplayType`` to select sub-modules where implemented and ``DisplayInvert`` to select inverted display where implemented
+- Command ``SerialBuffer 256..520`` to change hardware serial receive buffer size from default (256) to max local buffer size (520) (#11448)
+- Command ``SetOption126 1`` to enable DS18x20 arithmetic mean over teleperiod for JSON temperature based on (#11472)
+- Support for TM1638 seven segment display by Ajith Vasudevan (#11031)
+- Support for MAX7219 seven segment display by Ajith Vasudevan (#11387)
+- Support for Frequency monitoring and zero-cross detection on CSE7761 (Sonoff Dual R3)
+- ESP32 support for internal Hall Effect sensor connected to both GPIO36 and GPIO39 only
+- Support for multiple CCS811 sensors with baseline control (USE_CCS811_V2) by clanganke (#10858)
+- Berry add ``gpio`` module
+- Berry add ``light`` module
+- Support for dummy energy monitor using user values set by commands ``VoltageSet``, ``CurrentSet``, ``PowerSet`` and ``FrequencySet``. Enable by selecting any GPIO as ``Option A2`` (#10640)
+- Command ``Backlog0`` to allow execution of following commands without delay
+- Tasmota discovery as alternative to Home Assistant discovery using define ``USE_TASMOTA_DISCOVERY``
+
+### Changed
+- PubSubClient library from EspEasy v2.7.12 to Tasmota v2.8.12
+- IRremoteESP8266 library from v2.7.15 to v2.7.16
+- ESP32 core library from v1.0.5 to v1.0.6
+- Limit number of relay/button columns in GUI to 8 (#11546)
+- ADC range result from int to float using command ``FreqRes`` for decimal resolution selection (#11545)
+- Teleinfo, if raw mode selected also return telemety values in SENSOR data
+- Removed overtemp detection on external energy monitoring devices (#11628)
+
+### Fixed
+- HC-SR04 on ESP32 release serial interface if not used (#11507)
+- Teleinfo, if raw mode selected also always update total energy calculations
+- Alexa discovery for ZBBridge (#11576)
+- Alexa discovery in hue emulation (#11415)
+
+## [9.3.1.1] 20210320
+### Added
+- Support for CSE7761 energy monitor as used in ESP32 based Sonoff Dual R3 Pow (#10793)
+- Command ``Sensor80 1 <0..7>`` to control MFRC522 RFID antenna gain from 18dB (0) to 48dB (7) (#11073)
+- Allow MCP230xx pinmode from output to input (#11104)
+- SML VBUS support (#11125)
+- Support for NEC and OPTOMA LCD/DLP Projector serial power control by Jan Bubík (#11145)
+- Support for XPT2046 touch screen digitizer on ILI9341 display by nonix (#11159)
+- Berry improvements (#11163)
+- Support for zigbee lumi.sensor_wleak (#11200)
+- Crash protection in ext_vnsprintf_P (#11202)
+- Extent compile time SetOptions support (#11204)
+- ESP32 Extent BLE (#11212)
+- ESP32 support for WS2812 hardware driver via RMT or I2S
+- ESP32 support for secondary I2C controller
+- Support for MPU6886 on primary or secondary I2C bus
+
+### Changed
+- ESP32 core library from v1.0.5-rc6 to v1.0.5
+- TasmotaSerial library from v3.2.0 to v3.3.0
+- TuyaMcu dimmer timeout (#11121)
+- Rename epaper 42 commands (#11222)
+- DeepSleep announcement topic (#11223)
+
+### Fixed
+- PN532 on ESP32 Serial flush both Tx and Rx buffers (#10910)
+- Light scheme related color changes (#11041)
+- Refactor acceleration function for shutter stepper and servo (#11088)
+- LM75AD detection on different addresses (#11096)
+- Timer loop when console is scrolled up regression from v9.3.0 (#11108)
+- Display exception when no file system is present (#11125)
+- Scripter and SML fixes (#11150)
+- Zigbee exception when bad frame is received (#11192)
+- ESP32 flash script for Odroid and Core2 (#11227)
+- ESP32 WS2812 bitbang support (#11248)
+- DS18x20 driver timing issue (#11270)
 
 ## [9.3.1] 20210223
 - Release Kenneth
 
-## [9.3.0.1]
+## [9.3.0.1] 20210223
 ### Added
 - Animate PWM dimmer brightness LEDs during transitions and with variable brightness (#11076)
 - Commands ``StateRetain`` and ``InfoRetain`` (#11084)
@@ -100,8 +299,8 @@ All notable changes to this project will be documented in this file.
 - ESP8266 until now NOT SUPPORTED linker files 2MB and up. Current settings will be overwritten once LittleFS is enabled
 
 ### Changed
-- Force initial default state ``SetOption57 1`` to scan wifi network every 44 minutes for strongest signal (#10395)
-- Command ``Sleep 0`` removes any sleep from wifi modem except when ESP32 BLE is active
+- Force initial default state ``SetOption57 1`` to scan Wi-Fi network every 44 minutes for strongest signal (#10395)
+- Command ``Sleep 0`` removes any sleep from Wi-Fi modem except when ESP32 BLE is active
 - PubSubClient MQTT_SOCKET_TIMEOUT from 15 to 4 seconds
 - Domoticz fixed 2 decimals resolution by user selectable ``TempRes``, ``HumRes`` and ``PressRes`` resolutions
 
@@ -137,10 +336,10 @@ All notable changes to this project will be documented in this file.
 - Milliseconds to console output (#10152)
 - Support for P9813 RGB Led MOSFET controller (#10104)
 - Support for GPIO option selection
-- Gpio ``Option_a1`` enabling PWM2 high impedance if powered off as used by Wyze bulbs (#10196)
+- Gpio ``Option A1`` enabling PWM2 high impedance if powered off as used by Wyze bulbs (#10196)
 - Support for FTC532 8-button touch controller by Peter Franck (#10222)
 - Support character `#` to be replaced by `space`-character in command ``Publish`` topic (#10258)
-- BSSID and Signal Strength Indicator to GUI wifi scan result (#10253)
+- BSSID and Signal Strength Indicator to GUI Wi-Fi scan result (#10253)
 - Support for Afrikaans language translations by Christiaan Heerze
 - Support for IR inverted leds using ``#define IR_SEND_INVERTED true`` (#10301)
 - Support for disabling 38kHz IR modulation using ``#define IR_SEND_USE_MODULATION false`` (#10301)
@@ -186,7 +385,7 @@ All notable changes to this project will be documented in this file.
 ### Changed
 - Core library from v2.7.4.7 to v2.7.4.9
 - Shelly Dimmer fw upgrade using WebGUI Firmware Upgrade and file from folder `tools/fw_shd_stm32/`
-- MQTT Wifi connection timeout from 5000 to 200 mSec (#9886)
+- MQTT Wi-Fi connection timeout from 5000 to 200 mSec (#9886)
 - Platformio compiler option `-free -fipa-pta` enabled (#9875)
 - IRremoteESP8266 library from v2.7.12 to v2.7.13
 - Shelly Dimmer 1 and 2 stm32 firmware from v51.4 to v51.5
@@ -490,7 +689,7 @@ All notable changes to this project will be documented in this file.
 ### Added
 - Initial support for Telegram bot (#8619)
 - Support for HP303B Temperature and Pressure sensor by Robert Jaakke (#8638)
-- Rule trigger ``System#Init`` to allow early rule execution without wifi and mqtt initialized yet
+- Rule trigger ``System#Init`` to allow early rule execution without Wi-Fi and mqtt initialized yet
 - Serial to TCP bridge, ``TCPStart`` and ``TCPBaudRate`` (needs #define USE_TCP_BRIDGE)
 
 ## [8.3.1.2] - 20200522
@@ -555,7 +754,7 @@ All notable changes to this project will be documented in this file.
 - Support for analog anemometer by Matteo Albinola (#8283)
 - Support for OpenTherm by Yuriy Sannikov (#8373)
 - Support for Thermostat control by arijav (#8212)
-- Automatic compression of Rules to achieve ~60% compression by Stefan Hadinger
+- Automatic compression of Rules to achieve ~60% compression by Stephan Hadinger
 - Command ``SetOption93 1`` to control caching of compressed rules
 - Rule trigger at root level like ``on loadavg<50 do power 2 endon`` after ``state`` command
 - Zigbee support for router and end-device mode
@@ -605,7 +804,7 @@ All notable changes to this project will be documented in this file.
 - Command ``Ping`` (#7176)
 - Command ``Palette`` to add the ability to specify a palette of colors (#8150)
 - Commands ``GlobalTemp`` and ``GlobalHum`` to init sensor data (#8152)
-- Quick wifi reconnect using saved AP parameters when ``SetOption56 0`` (#3189)
+- Quick Wi-Fi reconnect using saved AP parameters when ``SetOption56 0`` (#3189)
 - More accuracy to GPS NTP server (#8088)
 - Support for an iAQ sensor (#8107)
 - Support for Seven Segment display using HT16K33 (#8116)
@@ -619,7 +818,7 @@ All notable changes to this project will be documented in this file.
 - IRremoteESP8266 library updated to v2.7.5
 
 ### Fixed
-- PWM flickering during wifi connection (#8046)
+- PWM flickering during Wi-Fi connection (#8046)
 - Zigbee crash with Occupancy sensor (#8089)
 - Prevent multiple pings to run concurrently
 - Scheme 2-4 brightness when SetOption68 1 (#8058)
@@ -652,7 +851,7 @@ All notable changes to this project will be documented in this file.
 - Support for HDC1080 Temperature and Humidity sensor by Luis Teixeira (#7888)
 - Commands ``SwitchMode 13`` PushOn and ``SwitchMode 14`` PushOnInverted (#7912)
 - Command ``HumOffset -10.0 .. 10.0`` to set global humidity sensor offset (#7934)
-- Zigbee support for Hue emulation by Stefan Hadinger
+- Zigbee support for Hue emulation by Stephan Hadinger
 - Dew Point to Temperature and Humidity sensors
 - Support for ElectriQ iQ-wifiMOODL RGBW light by Ian King (#7947)
 
@@ -854,7 +1053,7 @@ All notable changes to this project will be documented in this file.
 ### 7.1.2.5 20191213
 
 - Change some Settings locations freeing up space for future single char allowing variable length text
-- Add Zigbee support for Xiaomi Aqara Vibration Sensor and Presence Sensor by Stefan Hadinger
+- Add Zigbee support for Xiaomi Aqara Vibration Sensor and Presence Sensor by Stephan Hadinger
 - Add Shutter functions ramp up/down and MQTT reporting by Stefan Bode
 
 ### 7.1.2.4 20191209
@@ -867,7 +1066,7 @@ All notable changes to this project will be documented in this file.
 - Add Yaw, Pitch and Roll support for MPU6050 by Philip Barclay (#7058)
 - Add reporting of raw weight to JSON from HX711 to overcome auto-tare functionality by @tobox (#7171)
 - Add command ``Sensor34 9 <weight code>`` to set minimum delta to trigger JSON message by @tobox (#7188)
-- Fix flashing H801 led at boot by Stefan Hadinger (#7165, #649)
+- Fix flashing H801 led at boot by Stephan Hadinger (#7165, #649)
 - Fix duplicated ``Backlog`` when using Event inside a Backlog by Adrian Scillato (#7178, #7147)
 - Fix Gui Timer when using a negative zero offset of -00:00 by Peter Ooms (#7174)
 
@@ -879,7 +1078,7 @@ All notable changes to this project will be documented in this file.
 
 - Remove rule trigger ``tele_power1#state`` due to compatibility
 - Add command ``SerialConfig 0..23`` or ``SerialConfig 8N1`` to select Serial Config based in PR by Luis Teixeira (#7108)
-- Add save call stack in RTC memory in case of crash, command ``Status 12`` to dump the stack by Stefan Hadinger
+- Add save call stack in RTC memory in case of crash, command ``Status 12`` to dump the stack by Stephan Hadinger
 - Add Home Assistant force update by Frederico Leoni (#7140, #7074)
 
 ### 7.1.2.1 20191206

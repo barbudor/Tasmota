@@ -59,6 +59,8 @@
 // JSON Strings do not translate
 // max 23 char
 #define DJ_TPWRIN "Total_in"
+#define DJ_TPWRIN0 "Total_in_0"
+#define DJ_TPWRIN1 "Total_in_1"
 #define DJ_TPWROUT "Total_out"
 #define DJ_TPWRCURR "Power_curr"
 #define DJ_TPWRCURR1 "Power_p1"
@@ -110,6 +112,7 @@ struct METER_DESC {
 #define WGS_COMBO 13
 #define EBZD_G 14
 #define SML_NO_OP 15
+#define Q3C 16
 
 // select this meter
 // SML_NO_OP ignores hardcoded interface
@@ -441,6 +444,26 @@ const uint8_t meter[]=
 "3,=h--------------------------------";                             // letzte Zeile
 #endif
 
+
+#if METER==Q3C
+#undef METERS_USED
+#define METERS_USED 1
+struct METER_DESC const meter_desc[METERS_USED]={
+  [0]={3,'s',0,SML_BAUDRATE,"SML",-1,1,0}};
+const uint8_t meter[]=
+//0x77,0x07,0x01,0x00,0x01,0x08,0x01,0xff
+"1,77070101010800ff@1000," D_TPWRIN0 ",kWh," DJ_TPWRIN0 ",2|" // Verbrauch T0
+//0x77,0x07,0x01,0x00,0x01,0x08,0x01,0xff
+"1,77070101010801ff@1000," D_TPWRIN1 ",kWh," DJ_TPWRIN1 ",2|" // Verbrauch T1
+//0x77,0x07,0x01,0x00,0x01,0x07,0x00,0xff
+"1,77070100010700ff@1," D_TPWRCURR ",W," DJ_TPWRCURR ",0|" // Strom Gesamt 
+//0x77,0x07,0x01,0x00,0x01,0x07,0x00,0xff
+"1,77070100150700ff@1," D_TPWRCURR1 ",W," DJ_TPWRCURR1 ",0|" // Strom L1
+//0x77,0x07,0x01,0x00,0x01,0x07,0x00,0xff
+"1,77070100290700ff@1," D_TPWRCURR2 ",W," DJ_TPWRCURR2 ",0|" // Strom L2
+//0x77,0x07,0x01,0x00,0x01,0x07,0x00,0xff
+"1,770701003D0700ff@1," D_TPWRCURR3 ",W," DJ_TPWRCURR3 ",0"; // Strom L3
+#endif
 
 // this driver uses double because meter vars would not fit in float
 //=====================================================
@@ -822,8 +845,12 @@ uint8_t Serial_peek() {
   return meter_ss[num-1]->peek();
 }
 
-uint8_t sml_logindex;
-char log_data[128];
+#ifndef SML_DUMP_SIZE
+#define SML_DUMP_SIZE 128
+#endif
+
+uint16_t sml_logindex;
+char log_data[SML_DUMP_SIZE];
 
 #define SML_EBUS_SKIP_SYNC_DUMPS
 
@@ -884,8 +911,8 @@ void Dump2log(void) {
         char c = SML_SREAD&0x7f;
         if (c == '\n' || c == '\r') {
           if (sml_logindex > 2) {
-            AddLogData(LOG_LEVEL_INFO, log_data);
             log_data[sml_logindex] = 0;
+            AddLogData(LOG_LEVEL_INFO, log_data);
             log_data[0] = ':';
             log_data[1] = ' ';
             sml_logindex = 2;
@@ -903,6 +930,7 @@ void Dump2log(void) {
       while (SML_SAVAILABLE) {
         c = SML_SREAD;
         if (c == VBUS_SYNC) {
+          log_data[sml_logindex] = 0;
           AddLogData(LOG_LEVEL_INFO, log_data);
           log_data[0] = ':';
           log_data[1] = ' ';
@@ -922,6 +950,7 @@ void Dump2log(void) {
           p = SML_SPEAK;
           if (p != EBUS_SYNC && sml_logindex > 5) {
             // new packet, plot last one
+            log_data[sml_logindex] = 0;
             AddLogData(LOG_LEVEL_INFO, log_data);
             strcpy(&log_data[0], ": aa ");
             sml_logindex = 5;
@@ -939,6 +968,7 @@ void Dump2log(void) {
       while (SML_SAVAILABLE) {
         c = SML_SREAD;
         if (c == SML_SYNC) {
+          log_data[sml_logindex] = 0;
           AddLogData(LOG_LEVEL_INFO, log_data);
           log_data[0] = ':';
           log_data[1] = ' ';
@@ -962,6 +992,7 @@ void Dump2log(void) {
         }
       }
       if (sml_logindex > 2) {
+        log_data[sml_logindex] = 0;
         AddLogData(LOG_LEVEL_INFO, log_data);
       }
     }
@@ -1069,6 +1100,11 @@ double dval;
 #endif
                     break;
                 case 3:
+                  // signed 24 bit
+                  value=(int32_t)(uvalue<<8);
+                  value/=256;
+                  break;
+
                 case 4:
                     // signed 32 bit
                     value=(int32_t)uvalue;
@@ -1296,6 +1332,7 @@ void sml_shift_in(uint32_t meters,uint32_t shard) {
     }
   } else if (meter_desc_p[meters].type=='v') {
     if (iob==EBUS_SYNC) {
+      sb_counter = 0;
       SML_Decode(meters);
       smltbuf[meters][0] = iob;
       meter_spos[meters] = 1;
@@ -1322,7 +1359,7 @@ void sml_shift_in(uint32_t meters,uint32_t shard) {
             //AddLog(LOG_LEVEL_INFO, PSTR("ebus crc error"));
         }
       }
-      meter_spos[meters]=0;
+      meter_spos[meters] = 0;
       return;
     }
 		smltbuf[meters][meter_spos[meters]] = iob;
@@ -1383,18 +1420,19 @@ void SML_Decode(uint8_t index) {
   const char *mp=(const char*)meter_p;
   int8_t mindex;
   uint8_t *cp;
-  uint8_t dindex=0,vindex=0;
+  uint8_t dindex = 0, vindex = 0;
   delay(0);
+
   while (mp != NULL) {
     // check list of defines
-    if (*mp==0) break;
+    if (*mp == 0) break;
 
     // new section
-    mindex=((*mp)&7)-1;
+    mindex = ((*mp) & 7) - 1;
 
-    if (mindex<0 || mindex>=meters_used) mindex=0;
-    mp+=2;
-    if (*mp=='=' && *(mp+1)=='h') {
+    if (mindex < 0 || mindex >= meters_used) mindex = 0;
+    mp += 2;
+    if (*mp == '=' && *(mp+1) == 'h') {
       mp = strchr(mp, '|');
       if (mp) mp++;
       continue;
@@ -1403,98 +1441,114 @@ void SML_Decode(uint8_t index) {
     if (index!=mindex) goto nextsect;
 
     // start of serial source buffer
-    cp=&smltbuf[mindex][0];
+    cp = &smltbuf[mindex][0];
 
     // compare
-    if (*mp=='=') {
+    if (*mp == '=') {
       // calculated entry, check syntax
       mp++;
       // do math m 1+2+3
-      if (*mp=='m' && !sb_counter) {
+      if (*mp == 'm' && !sb_counter) {
         // only every 256 th byte
         // else it would be calculated every single serial byte
         mp++;
-        while (*mp==' ') mp++;
+        while (*mp == ' ') mp++;
         // 1. index
         double dvar;
         uint8_t opr;
-        uint32_t ind;
-        ind=atoi(mp);
-        while (*mp>='0' && *mp<='9') mp++;
-        if (ind<1 || ind>SML_MAX_VARS) ind=1;
-        dvar=meter_vars[ind-1];
-        for (uint8_t p = 0; p < 5; p++) {
-          if (*mp=='@') {
+        uint8_t mind;
+        int32_t ind;
+        mind = strtol((char*)mp, (char**)&mp, 10);
+        if (mind < 1 || mind > SML_MAX_VARS) mind = 1;
+        dvar = meter_vars[mind - 1];
+        while (*mp==' ') mp++;
+        for (uint8_t p = 0; p < 8; p++) {
+          if (*mp == '@') {
             // store result
-            meter_vars[vindex]=dvar;
+            meter_vars[vindex] = dvar;
             mp++;
-            SML_Immediate_MQTT((const char*)mp,vindex,mindex);
             break;
           }
-          opr=*mp;
+          opr = *mp;
           mp++;
-          uint8_t iflg=0;
-          if (*mp=='#') {
-            iflg=1;
+          uint8_t iflg = 0;
+          if (*mp == '#') {
+            iflg = 1;
             mp++;
           }
-          ind=atoi(mp);
-          while (*mp>='0' && *mp<='9') mp++;
-          if (ind<1 || ind>SML_MAX_VARS) ind=1;
+          ind = strtol((char*)mp, (char**)&mp, 10);
+          mind = ind;
+          if (mind < 1 || mind > SML_MAX_VARS) mind = 1;
           switch (opr) {
               case '+':
-                if (iflg) dvar+=ind;
-                else dvar+=meter_vars[ind-1];
+                if (iflg) dvar += ind;
+                else dvar += meter_vars[mind - 1];
                 break;
               case '-':
-                if (iflg) dvar-=ind;
-                else dvar-=meter_vars[ind-1];
+                if (iflg) dvar -= ind;
+                else dvar -= meter_vars[mind - 1];
                 break;
               case '*':
-                if (iflg) dvar*=ind;
-                else dvar*=meter_vars[ind-1];
+                if (iflg) dvar *= ind;
+                else dvar *= meter_vars[mind - 1];
                 break;
               case '/':
-                if (iflg) dvar/=ind;
-                else dvar/=meter_vars[ind-1];
+                if (iflg) dvar /= ind;
+                else dvar /= meter_vars[mind - 1];
                 break;
           }
           while (*mp==' ') mp++;
-          if (*mp=='@') {
+          if (*mp == '@') {
             // store result
-            meter_vars[vindex]=dvar;
+            meter_vars[vindex] = dvar;
             mp++;
-            SML_Immediate_MQTT((const char*)mp,vindex,mindex);
             break;
           }
         }
+        double fac = CharToDouble((char*)mp);
+        meter_vars[vindex] /= fac;
+        SML_Immediate_MQTT((const char*)mp, vindex, mindex);
+        dvalid[vindex] = 1;
+        // get sfac
       } else if (*mp=='d') {
         // calc deltas d ind 10 (eg every 10 secs)
-        if (dindex<MAX_DVARS) {
+        if (dindex < MAX_DVARS) {
           // only n indexes
           mp++;
-          while (*mp==' ') mp++;
-          uint8_t ind=atoi(mp);
-          while (*mp>='0' && *mp<='9') mp++;
-          if (ind<1 || ind>SML_MAX_VARS) ind=1;
-          uint32_t delay=atoi(mp)*1000;
-          uint32_t dtime=millis()-dtimes[dindex];
-          if (dtime>delay) {
+          while (*mp == ' ') mp++;
+          uint8_t ind = atoi(mp);
+          while (*mp >= '0' && *mp <= '9') mp++;
+          if (ind < 1 || ind > SML_MAX_VARS) ind = 1;
+          uint32_t delay = atoi(mp) * 1000;
+          uint32_t dtime = millis() - dtimes[dindex];
+          if (dtime > delay) {
             // calc difference
-            dtimes[dindex]=millis();
-            double vdiff = meter_vars[ind-1]-dvalues[dindex];
-            dvalues[dindex]=meter_vars[ind-1];
-            meter_vars[vindex]=(double)360000.0*vdiff/((double)dtime/10000.0);
+            dtimes[dindex] = millis();
+            double vdiff = meter_vars[ind - 1] - dvalues[dindex];
+            dvalues[dindex] = meter_vars[ind - 1];
+            double dres = (double)360000.0 * vdiff / ((double)dtime / 10000.0);
+#ifdef USE_SML_MEDIAN_FILTER
+            if (meter_desc_p[mindex].flag & 16) {
+              meter_vars[vindex] = sml_median(&sml_mf[vindex], dres);
+            } else {
+              meter_vars[vindex] = dres;
+            }
+#else
+            meter_vars[vindex] = dres;
+#endif
 
             mp=strchr(mp,'@');
             if (mp) {
               mp++;
-              SML_Immediate_MQTT((const char*)mp,vindex,mindex);
+              double fac = CharToDouble((char*)mp);
+              meter_vars[vindex] /= fac;
+              SML_Immediate_MQTT((const char*)mp, vindex, mindex);
             }
           }
+          dvalid[vindex] = 1;
           dindex++;
         }
-      } else if (*mp=='h') {
+      } else if (*mp == 'h') {
         // skip html tag line
         mp = strchr(mp, '|');
         if (mp) mp++;
@@ -1502,27 +1556,27 @@ void SML_Decode(uint8_t index) {
       }
     } else {
       // compare value
-      uint8_t found=1;
-      double ebus_dval=99;
-      float mbus_dval=99;
-      while (*mp!='@') {
-        if (meter_desc_p[mindex].type=='o' || meter_desc_p[mindex].type=='c') {
-          if (*mp++!=*cp++) {
+      uint8_t found = 1;
+      double ebus_dval = 99;
+      float mbus_dval = 99;
+      while (*mp != '@') {
+        if (meter_desc_p[mindex].type == 'o' || meter_desc_p[mindex].type == 'c') {
+          if (*mp++ != *cp++) {
             found=0;
           }
         } else {
-          if (meter_desc_p[mindex].type=='s') {
+          if (meter_desc_p[mindex].type == 's') {
             // sml
             uint8_t val = hexnibble(*mp++) << 4;
             val |= hexnibble(*mp++);
-            if (val!=*cp++) {
+            if (val != *cp++) {
               found=0;
             }
           } else {
             // ebus mbus pzem vbus or raw
             // XXHHHHSSUU
-            if (*mp=='x') {
-              if (*(mp+1)=='x') {
+            if (*mp == 'x') {
+              if (*(mp + 1) == 'x') {
                 //ignore one byte
                 mp += 2;
                 cp++;
@@ -1724,6 +1778,7 @@ void SML_Decode(uint8_t index) {
       }
       if (found) {
         // matches, get value
+        dvalid[vindex] = 1;
         mp++;
 #ifdef ED300L
         g_mindex=mindex;
@@ -1801,7 +1856,7 @@ void SML_Decode(uint8_t index) {
               if (lowByte(crc)!=smltbuf[mindex][pos]) goto nextsect;
               if (highByte(crc)!=smltbuf[mindex][pos+1]) goto nextsect;
               dval=mbus_dval;
-              //AddLog_P(LOG_LEVEL_INFO, PSTR(">> %s"),mp);
+              //AddLog(LOG_LEVEL_INFO, PSTR(">> %s"),mp);
               mp++;
             } else {
               if (meter_desc_p[mindex].type=='p') {
@@ -1824,14 +1879,13 @@ void SML_Decode(uint8_t index) {
           meter_vars[vindex]=dval;
 #endif
 
-//AddLog_P(LOG_LEVEL_INFO, PSTR(">> %s"),mp);
+          //AddLog(LOG_LEVEL_INFO, PSTR(">> %s"),mp);
           // get scaling factor
-          double fac=CharToDouble((char*)mp);
-          meter_vars[vindex]/=fac;
-          SML_Immediate_MQTT((const char*)mp,vindex,mindex);
+          double fac = CharToDouble((char*)mp);
+          meter_vars[vindex] /= fac;
+          SML_Immediate_MQTT((const char*)mp, vindex, mindex);
         }
       }
-      dvalid[vindex] = 1;
       //AddLog(LOG_LEVEL_INFO, PSTR("set valid in line %d"), vindex);
     }
 nextsect:
@@ -1884,14 +1938,14 @@ void SML_Immediate_MQTT(const char *mp,uint8_t index,uint8_t mindex) {
 
 // web + json interface
 void SML_Show(boolean json) {
-  int8_t count,mindex,cindex=0;
+  int8_t count, mindex, cindex = 0;
   char tpowstr[32];
   char name[24];
   char unit[8];
   char jname[24];
   int8_t index=0,mid=0;
   char *mp=(char*)meter_p;
-  char *cp,nojson=0;
+  char *cp, nojson = 0;
   //char b_mqtt_data[MESSZ];
   //b_mqtt_data[0]=0;
 
@@ -1906,9 +1960,9 @@ void SML_Show(boolean json) {
 
         if (mindex<0 || mindex>=meters_used) mindex=0;
         if (meter_desc_p[mindex].prefix[0]=='*' && meter_desc_p[mindex].prefix[1]==0) {
-          nojson=1;
+          nojson = 1;
         } else {
-          nojson=0;
+          nojson = 0;
         }
         mp+=2;
         if (*mp=='=' && *(mp+1)=='h') {
@@ -1953,8 +2007,14 @@ void SML_Show(boolean json) {
             } else {
               mid=0;
             }
+          } else if (*cp=='b') {
+            // bit value
+#ifdef SML_BIT_TEXT
+            sprintf_P(tpowstr, PSTR("\"%s\""), (uint8_t)meter_vars[index]?D_ON:D_OFF);
+            mid = 2;
+#endif
           } else {
-            mid=0;
+            mid = 0;
           }
           // skip scaling
           cp=strchr(cp,',');
@@ -1995,27 +2055,35 @@ void SML_Show(boolean json) {
             }
 
             if (json) {
-              if (!dvalid[index]) {
-                nojson = 1;
+              //if (dvalid[index]) {
+
                 //AddLog(LOG_LEVEL_INFO, PSTR("not yet valid line %d"), index);
-              }
+              //}
               // json export
               if (index==0) {
                   //snprintf_P(b_mqtt_data, sizeof(b_mqtt_data), "%s,\"%s\":{\"%s\":%s", b_mqtt_data,meter_desc_p[mindex].prefix,jname,tpowstr);
-                  if (!nojson) ResponseAppend_P(PSTR(",\"%s\":{\"%s\":%s"),meter_desc_p[mindex].prefix,jname,tpowstr);
+                  if (!nojson) {
+                    ResponseAppend_P(PSTR(",\"%s\":{\"%s\":%s"),meter_desc_p[mindex].prefix,jname,tpowstr);
+                  }
               }
               else {
                 if (lastmind!=mindex) {
                   // meter changed, close mqtt
                   //snprintf_P(b_mqtt_data, sizeof(b_mqtt_data), "%s}", b_mqtt_data);
-                  if (!nojson) ResponseAppend_P(PSTR("}"));
+                  if (!nojson) {
+                     ResponseAppend_P(PSTR("}"));
+                   }
                     // and open new
                     //snprintf_P(b_mqtt_data, sizeof(b_mqtt_data), "%s,\"%s\":{\"%s\":%s", b_mqtt_data,meter_desc_p[mindex].prefix,jname,tpowstr);
-                  if (!nojson) ResponseAppend_P(PSTR(",\"%s\":{\"%s\":%s"),meter_desc_p[mindex].prefix,jname,tpowstr);
+                  if (!nojson) {
+                    ResponseAppend_P(PSTR(",\"%s\":{\"%s\":%s"),meter_desc_p[mindex].prefix,jname,tpowstr);
+                  }
                   lastmind=mindex;
                 } else {
                   //snprintf_P(b_mqtt_data, sizeof(b_mqtt_data), "%s,\"%s\":%s", b_mqtt_data,jname,tpowstr);
-                  if (!nojson) ResponseAppend_P(PSTR(",\"%s\":%s"),jname,tpowstr);
+                  if (!nojson) {
+                    ResponseAppend_P(PSTR(",\"%s\":%s"),jname,tpowstr);
+                  }
                 }
               }
 
@@ -2036,7 +2104,9 @@ void SML_Show(boolean json) {
     if (json) {
      //snprintf_P(b_mqtt_data, sizeof(b_mqtt_data), "%s}", b_mqtt_data);
      //ResponseAppend_P(PSTR("%s"),b_mqtt_data);
-     if (!nojson) ResponseAppend_P(PSTR("}"));
+     if (!nojson) {
+       ResponseAppend_P(PSTR("}"));
+     }
    } else {
      //WSContentSend_PD(PSTR("%s"),b_mqtt_data);
    }
@@ -2077,7 +2147,7 @@ struct SML_COUNTER {
 uint8_t sml_counter_pinstate;
 
 uint8_t sml_cnt_index[MAX_COUNTERS] =  { 0, 1, 2, 3 };
-void ICACHE_RAM_ATTR SML_CounterIsr(void *arg) {
+void IRAM_ATTR SML_CounterIsr(void *arg) {
 uint32_t index = *static_cast<uint8_t*>(arg);
 
 uint32_t time = micros();
@@ -2133,13 +2203,13 @@ char dstbuf[SML_SRCBSIZE*2];
     Replace_Cmd_Vars(lp,1,dstbuf,sizeof(dstbuf));
     lp+=SML_getlinelen(lp)+1;
     uint32_t slen=strlen(dstbuf);
-    //AddLog_P(LOG_LEVEL_INFO, PSTR("%d - %s"),slen,dstbuf);
+    //AddLog(LOG_LEVEL_INFO, PSTR("%d - %s"),slen,dstbuf);
     mlen+=slen+1;
     if (*lp=='#') break;
     if (*lp=='>') break;
     if (*lp==0) break;
   }
-  //AddLog_P(LOG_LEVEL_INFO, PSTR("len=%d"),mlen);
+  //AddLog(LOG_LEVEL_INFO, PSTR("len=%d"),mlen);
   return mlen+32;
 }
 #else
@@ -2151,13 +2221,13 @@ uint32_t SML_getscriptsize(char *lp) {
       break;
     }
   }
-  //AddLog_P(LOG_LEVEL_INFO, PSTR("len=%d"),mlen);
+  //AddLog(LOG_LEVEL_INFO, PSTR("len=%d"),mlen);
   return mlen;
 }
 #endif
 
 bool Gpio_used(uint8_t gpiopin) {
-  if ((gpiopin < ARRAY_SIZE(TasmotaGlobal.gpio_pin)) && (TasmotaGlobal.gpio_pin[gpiopin] > 0)) {
+  if ((gpiopin < nitems(TasmotaGlobal.gpio_pin)) && (TasmotaGlobal.gpio_pin[gpiopin] > 0)) {
     return true;
   }
   return false;
@@ -2195,7 +2265,7 @@ void SML_Init(void) {
 
   }
 
-  if (bitRead(Settings.rule_enabled, 0)) {
+  if (bitRead(Settings->rule_enabled, 0)) {
 
   uint8_t meter_script=Run_Scripter(">M",-2,0);
   if (meter_script==99) {
@@ -2256,8 +2326,26 @@ dddef_exit:
           script_meter_desc[index].type = *lp;
           lp++;
           if (*lp != ',') {
-            script_meter_desc[index].sopt = *lp&7;
-            lp++;
+            switch (*lp) {
+              case 'N':
+                lp++;
+                script_meter_desc[index].sopt = 0x10 | (*lp & 3);
+                lp++;
+                break;
+              case 'E':
+                lp++;
+                script_meter_desc[index].sopt = 0x20 | (*lp & 3);
+                lp++;
+                break;
+              case 'O':
+                lp++;
+                script_meter_desc[index].sopt = 0x30 | (*lp & 3);
+                lp++;
+                break;
+              default:
+                script_meter_desc[index].sopt = *lp&7;
+                lp++;
+            }
           } else {
             script_meter_desc[index].sopt = 0;
           }
@@ -2300,9 +2388,9 @@ dddef_exit:
                 txbuff[cnt] = *lp++;
               }
               if (txlen) {
-                script_meter_desc[index].txmem = (char*)calloc(txlen+2, 1);
+                script_meter_desc[index].txmem = (char*)calloc(txlen + 2, 1);
                 if (script_meter_desc[index].txmem) {
-                  strcpy(script_meter_desc[index].txmem,txbuff);
+                  strcpy(script_meter_desc[index].txmem, txbuff);
                 }
                 script_meter_desc[index].index = 0;
                 script_meter_desc[index].max_index = tx_entries;
@@ -2318,7 +2406,7 @@ dddef_exit:
         char dstbuf[SML_SRCBSIZE*2];
         Replace_Cmd_Vars(lp, 1, dstbuf,sizeof(dstbuf));
         lp += SML_getlinelen(lp);
-        //AddLog_P(LOG_LEVEL_INFO, PSTR("%s"),dstbuf);
+        //AddLog(LOG_LEVEL_INFO, PSTR("%s"),dstbuf);
         char *lp1 = dstbuf;
         if (*lp1 == '-' || isdigit(*lp1)) {
           //toLogEOL(">>",lp);
@@ -2402,7 +2490,7 @@ init10:
   uint8_t cindex=0;
   // preloud counters
   for (byte i = 0; i < MAX_COUNTERS; i++) {
-      RtcSettings.pulse_counter[i]=Settings.pulse_counter[i];
+      RtcSettings.pulse_counter[i]=Settings->pulse_counter[i];
       sml_counters[i].sml_cnt_last_ts=millis();
   }
   uint32_t uart_index=2;
@@ -2454,15 +2542,36 @@ init10:
 #endif
 
         SerialConfig smode = SERIAL_8N1;
-        if (meter_desc_p[meters].sopt == 2) {
-          smode = SERIAL_8N2;
-        }
-        if (meter_desc_p[meters].type=='M') {
-          smode = SERIAL_8E1;
+
+        if (meter_desc_p[meters].sopt & 0xf0) {
+          // new serial config
+          switch (meter_desc_p[meters].sopt >> 4) {
+            case 1:
+              if ((meter_desc_p[meters].sopt & 1) == 1) smode = SERIAL_8N1;
+              else smode = SERIAL_8N2;
+              break;
+            case 2:
+              if ((meter_desc_p[meters].sopt & 1) == 1) smode = SERIAL_8E1;
+              else smode = SERIAL_8E2;
+              break;
+            case 3:
+              if ((meter_desc_p[meters].sopt & 1) == 1) smode = SERIAL_8O1;
+              else smode = SERIAL_8O2;
+              break;
+          }
+        } else {
+          // depecated serial config
           if (meter_desc_p[meters].sopt == 2) {
-            smode = SERIAL_8E2;
+            smode = SERIAL_8N2;
+          }
+          if (meter_desc_p[meters].type=='M') {
+            smode = SERIAL_8E1;
+            if (meter_desc_p[meters].sopt == 2) {
+              smode = SERIAL_8E2;
+            }
           }
         }
+
 #ifdef ESP8266
         if (meter_ss[meters]->begin(meter_desc_p[meters].params)) {
           meter_ss[meters]->flush();
@@ -2674,10 +2783,10 @@ void SML_Check_Send(void) {
   char *cp;
   for (uint32_t cnt=sml_desc_cnt; cnt<meters_used; cnt++) {
     if (script_meter_desc[cnt].trxpin>=0 && script_meter_desc[cnt].txmem) {
-      //AddLog_P(LOG_LEVEL_INFO, PSTR("100 ms>> %d - %s - %d"),sml_desc_cnt,script_meter_desc[cnt].txmem,script_meter_desc[cnt].tsecs);
+      //AddLog(LOG_LEVEL_INFO, PSTR("100 ms>> %d - %s - %d"),sml_desc_cnt,script_meter_desc[cnt].txmem,script_meter_desc[cnt].tsecs);
       if ((sml_100ms_cnt>=script_meter_desc[cnt].tsecs)) {
         sml_100ms_cnt=0;
-        //AddLog_P(LOG_LEVEL_INFO, PSTR("100 ms>> 2"),cp);
+        //AddLog(LOG_LEVEL_INFO, PSTR("100 ms>> 2"),cp);
         if (script_meter_desc[cnt].max_index>1) {
           script_meter_desc[cnt].index++;
           if (script_meter_desc[cnt].index>=script_meter_desc[cnt].max_index) {
@@ -2691,7 +2800,7 @@ void SML_Check_Send(void) {
           //SML_Send_Seq(cnt,cp);
           sml_desc_cnt++;
         }
-        //AddLog_P(LOG_LEVEL_INFO, PSTR(">> %s"),cp);
+        //AddLog(LOG_LEVEL_INFO, PSTR(">> %s"),cp);
         SML_Send_Seq(cnt,cp);
         if (sml_desc_cnt>=meters_used) {
           sml_desc_cnt=0;
@@ -2721,55 +2830,59 @@ uint8_t sml_hexnibble(char chr) {
 
 // send sequence every N Seconds
 void SML_Send_Seq(uint32_t meter,char *seq) {
-  uint8_t sbuff[32];
-  uint8_t *ucp=sbuff,slen=0;
-  char *cp=seq;
+  uint8_t sbuff[48];
+  uint8_t *ucp = sbuff, slen = 0;
+  char *cp = seq;
   uint8_t rflg = 0;
-  if (*cp=='r') {
+  if (*cp == 'r') {
     rflg = 1;
     cp++;
   }
   while (*cp) {
     if (!*cp || !*(cp+1)) break;
-    if (*cp==',') break;
-    uint8_t iob=(sml_hexnibble(*cp) << 4) | sml_hexnibble(*(cp+1));
-    cp+=2;
-    *ucp++=iob;
+    if (*cp == ',') break;
+    uint8_t iob = (sml_hexnibble(*cp) << 4) | sml_hexnibble(*(cp + 1));
+    cp += 2;
+    *ucp++ = iob;
     slen++;
-    if (slen>=sizeof(sbuff)) break;
+    if (slen >= sizeof(sbuff)-6) break; // leave space for checksum
   }
-  if (script_meter_desc[meter].type=='m' || script_meter_desc[meter].type=='M') {
+  if (script_meter_desc[meter].type == 'm' || script_meter_desc[meter].type == 'M') {
     if (!rflg) {
-      *ucp++=0;
-      *ucp++=2;
-      slen+=2;
+      *ucp++ = 0;
+      *ucp++ = 2;
+      slen += 2;
     }
     // append crc
-    uint16_t crc = MBUS_calculateCRC(sbuff,slen);
-    *ucp++=lowByte(crc);
-    *ucp++=highByte(crc);
-    slen+=2;
+    uint16_t crc = MBUS_calculateCRC(sbuff, slen);
+    *ucp++ = lowByte(crc);
+    *ucp++ = highByte(crc);
+    slen += 2;
   }
-  if (script_meter_desc[meter].type=='o') {
-    for (uint32_t cnt=0;cnt<slen;cnt++) {
-      sbuff[cnt]|=(CalcEvenParity(sbuff[cnt])<<7);
+  if (script_meter_desc[meter].type == 'o') {
+    for (uint32_t cnt = 0; cnt < slen; cnt++) {
+      sbuff[cnt] |= (CalcEvenParity(sbuff[cnt]) << 7);
     }
   }
-  if (script_meter_desc[meter].type=='p') {
-    *ucp++=0xc0;
-    *ucp++=0xa8;
-    *ucp++=1;
-    *ucp++=1;
-    *ucp++=0;
-    *ucp++=SML_PzemCrc(sbuff,6);
-    slen+=6;
+  if (script_meter_desc[meter].type == 'p') {
+    *ucp++ = 0xc0;
+    *ucp++ = 0xa8;
+    *ucp++ = 1;
+    *ucp++ = 1;
+    *ucp++ = 0;
+    *ucp++ = SML_PzemCrc(sbuff, 6);
+    slen += 6;
   }
-  meter_ss[meter]->write(sbuff,slen);
+  meter_ss[meter]->write(sbuff, slen);
   if (dump2log) {
+#ifdef SML_DUMP_OUT_ALL
+    Hexdump(sbuff, slen);
+#else
     uint8_t type = meter_desc_p[(dump2log&7) - 1].type;
     if (type == 'm' || type == 'M') {
       Hexdump(sbuff, slen);
     }
+#endif
   }
 
 }
@@ -2870,7 +2983,7 @@ void InjektCounterValue(uint8_t meter,uint32_t counter) {
 
 void SML_CounterSaveState(void) {
   for (byte i = 0; i < MAX_COUNTERS; i++) {
-      Settings.pulse_counter[i] = RtcSettings.pulse_counter[i];
+      Settings->pulse_counter[i] = RtcSettings.pulse_counter[i];
   }
 }
 
@@ -2898,7 +3011,7 @@ bool Xsns53(byte function) {
     //    break;
 #ifdef USE_SCRIPT
       case FUNC_EVERY_100_MSECOND:
-        if (bitRead(Settings.rule_enabled, 0)) {
+        if (bitRead(Settings->rule_enabled, 0)) {
           SML_Check_Send();
         }
         break;

@@ -23,7 +23,7 @@
  * ESP32 webcam based on example in Arduino-ESP32 library
  *
  * Template as used on ESP32-CAM WiFi + bluetooth Camera Module Development Board ESP32 With Camera Module OV2640 Geekcreit for Arduino
- * {"NAME":"AITHINKER CAM","GPIO":[4992,1,1,1,1,5088,1,1,1,1,1,1,1,1,5089,5090,0,5091,5184,5152,0,5120,5024,5056,0,0,0,0,4928,1,5094,5095,5092,0,0,5093],"FLAG":0,"BASE":1}
+ * {"NAME":"AITHINKER CAM","GPIO":[4992,1,672,1,416,5088,1,1,1,6720,736,704,1,1,5089,5090,0,5091,5184,5152,0,5120,5024,5056,0,0,0,0,4928,1,5094,5095,5092,0,0,5093],"FLAG":0,"BASE":2}
  *
  * Supported commands:
  * WcStream     = Control streaming, 0 = stop, 1 = start
@@ -284,11 +284,11 @@ uint32_t WcSetup(int32_t fsiz) {
 
   sensor_t * wc_s = esp_camera_sensor_get();
 
-  wc_s->set_vflip(wc_s, Settings.webcam_config.flip);
-  wc_s->set_hmirror(wc_s, Settings.webcam_config.mirror);
-  wc_s->set_brightness(wc_s, Settings.webcam_config.brightness -2);  // up the brightness just a bit
-  wc_s->set_saturation(wc_s, Settings.webcam_config.saturation -2);  // lower the saturation
-  wc_s->set_contrast(wc_s, Settings.webcam_config.contrast -2);      // keep contrast
+  wc_s->set_vflip(wc_s, Settings->webcam_config.flip);
+  wc_s->set_hmirror(wc_s, Settings->webcam_config.mirror);
+  wc_s->set_brightness(wc_s, Settings->webcam_config.brightness -2);  // up the brightness just a bit
+  wc_s->set_saturation(wc_s, Settings->webcam_config.saturation -2);  // lower the saturation
+  wc_s->set_contrast(wc_s, Settings->webcam_config.contrast -2);      // keep contrast
 
   // drop down frame size for higher initial frame rate
   wc_s->set_framesize(wc_s, (framesize_t)fsiz);
@@ -700,7 +700,7 @@ void HandleImageBasic(void) {
 
   AddLog(LOG_LEVEL_DEBUG_MORE, PSTR(D_LOG_HTTP "Capture image"));
 
-  if (Settings.webcam_config.stream) {
+  if (Settings->webcam_config.stream) {
     if (!Wc.CamServer) {
       WcStreamControl();
     }
@@ -861,8 +861,8 @@ uint32_t WcSetStreamserver(uint32_t flag) {
 }
 
 void WcStreamControl() {
-  WcSetStreamserver(Settings.webcam_config.stream);
-  WcSetup(Settings.webcam_config.resolution);
+  WcSetStreamserver(Settings->webcam_config.stream);
+  WcSetup(Settings->webcam_config.resolution);
 }
 
 /*********************************************************************************************/
@@ -879,7 +879,7 @@ void WcLoop(void) {
 #endif
 
 #ifdef ENABLE_RTSPSERVER
-    if (Settings.webcam_config.rtsp && !TasmotaGlobal.global_state.wifi_down && Wc.up) {
+    if (Settings->webcam_config.rtsp && !TasmotaGlobal.global_state.wifi_down && Wc.up) {
       if (!Wc.rtsp_start) {
         Wc.rtspp = new WiFiServer(8554);
         Wc.rtspp->begin();
@@ -927,7 +927,7 @@ void WcPicSetup(void) {
 }
 
 void WcShowStream(void) {
-  if (Settings.webcam_config.stream) {
+  if (Settings->webcam_config.stream) {
 //    if (!Wc.CamServer || !Wc.up) {
     if (!Wc.CamServer) {
       WcStreamControl();
@@ -941,14 +941,14 @@ void WcShowStream(void) {
 }
 
 void WcInit(void) {
-  if (!Settings.webcam_config.data) {
-    Settings.webcam_config.stream = 1;
-    Settings.webcam_config.resolution = FRAMESIZE_QVGA;
-    Settings.webcam_config.flip = 0;
-    Settings.webcam_config.mirror = 0;
-    Settings.webcam_config.saturation = 0;  // -2
-    Settings.webcam_config.brightness = 3;  // 1
-    Settings.webcam_config.contrast = 2;    // 0
+  if (!Settings->webcam_config.data) {
+    Settings->webcam_config.stream = 1;
+    Settings->webcam_config.resolution = FRAMESIZE_QVGA;
+    Settings->webcam_config.flip = 0;
+    Settings->webcam_config.mirror = 0;
+    Settings->webcam_config.saturation = 0;  // -2
+    Settings->webcam_config.brightness = 3;  // 1
+    Settings->webcam_config.contrast = 2;    // 0
   }
 }
 
@@ -991,69 +991,69 @@ void CmndWebcam(void) {
   ",\"" D_CMND_RTSP "\":%d"
 #endif // ENABLE_RTSPSERVER
   "}}"),
-    Settings.webcam_config.stream, Settings.webcam_config.resolution, Settings.webcam_config.mirror,
-    Settings.webcam_config.flip,
-    Settings.webcam_config.saturation -2, Settings.webcam_config.brightness -2, Settings.webcam_config.contrast -2
+    Settings->webcam_config.stream, Settings->webcam_config.resolution, Settings->webcam_config.mirror,
+    Settings->webcam_config.flip,
+    Settings->webcam_config.saturation -2, Settings->webcam_config.brightness -2, Settings->webcam_config.contrast -2
 #ifdef ENABLE_RTSPSERVER
-  , Settings.webcam_config.rtsp
+  , Settings->webcam_config.rtsp
 #endif // ENABLE_RTSPSERVER
   );
 }
 
 void CmndWebcamStream(void) {
   if ((XdrvMailbox.payload >= 0) && (XdrvMailbox.payload <= 1)) {
-    Settings.webcam_config.stream = XdrvMailbox.payload;
-    if (!Settings.webcam_config.stream) { WcStreamControl(); }  // Stop stream
+    Settings->webcam_config.stream = XdrvMailbox.payload;
+    if (!Settings->webcam_config.stream) { WcStreamControl(); }  // Stop stream
   }
-  ResponseCmndStateText(Settings.webcam_config.stream);
+  ResponseCmndStateText(Settings->webcam_config.stream);
 }
 
 void CmndWebcamResolution(void) {
   if ((XdrvMailbox.payload >= 0) && (XdrvMailbox.payload < FRAMESIZE_FHD)) {
-    Settings.webcam_config.resolution = XdrvMailbox.payload;
-    WcSetOptions(0, Settings.webcam_config.resolution);
+    Settings->webcam_config.resolution = XdrvMailbox.payload;
+    WcSetOptions(0, Settings->webcam_config.resolution);
   }
-  ResponseCmndNumber(Settings.webcam_config.resolution);
+  ResponseCmndNumber(Settings->webcam_config.resolution);
 }
 
 void CmndWebcamMirror(void) {
   if ((XdrvMailbox.payload >= 0) && (XdrvMailbox.payload <= 1)) {
-    Settings.webcam_config.mirror = XdrvMailbox.payload;
-    WcSetOptions(3, Settings.webcam_config.mirror);
+    Settings->webcam_config.mirror = XdrvMailbox.payload;
+    WcSetOptions(3, Settings->webcam_config.mirror);
   }
-  ResponseCmndStateText(Settings.webcam_config.mirror);
+  ResponseCmndStateText(Settings->webcam_config.mirror);
 }
 
 void CmndWebcamFlip(void) {
   if ((XdrvMailbox.payload >= 0) && (XdrvMailbox.payload <= 1)) {
-    Settings.webcam_config.flip = XdrvMailbox.payload;
-    WcSetOptions(2, Settings.webcam_config.flip);
+    Settings->webcam_config.flip = XdrvMailbox.payload;
+    WcSetOptions(2, Settings->webcam_config.flip);
   }
-  ResponseCmndStateText(Settings.webcam_config.flip);
+  ResponseCmndStateText(Settings->webcam_config.flip);
 }
 
 void CmndWebcamSaturation(void) {
   if ((XdrvMailbox.payload >= -2) && (XdrvMailbox.payload <= 2)) {
-    Settings.webcam_config.saturation = XdrvMailbox.payload +2;
-    WcSetOptions(6, Settings.webcam_config.saturation -2);
+    Settings->webcam_config.saturation = XdrvMailbox.payload +2;
+    WcSetOptions(6, Settings->webcam_config.saturation -2);
   }
-  ResponseCmndNumber(Settings.webcam_config.saturation -2);
+  ResponseCmndNumber(Settings->webcam_config.saturation -2);
 }
 
 void CmndWebcamBrightness(void) {
   if ((XdrvMailbox.payload >= -2) && (XdrvMailbox.payload <= 2)) {
-    Settings.webcam_config.brightness = XdrvMailbox.payload +2;
-    WcSetOptions(5, Settings.webcam_config.brightness -2);
+    Settings->webcam_config.brightness = XdrvMailbox.payload +2;
+    WcSetOptions(5, Settings->webcam_config.brightness -2);
   }
-  ResponseCmndNumber(Settings.webcam_config.brightness -2);
+  ResponseCmndNumber(Settings->webcam_config.brightness -2);
 }
 
 void CmndWebcamContrast(void) {
   if ((XdrvMailbox.payload >= -2) && (XdrvMailbox.payload <= 2)) {
-    Settings.webcam_config.contrast = XdrvMailbox.payload +2;
-    WcSetOptions(4, Settings.webcam_config.contrast -2);
+    Settings->webcam_config.contrast = XdrvMailbox.payload +2;
+    WcSetOptions(4, Settings->webcam_config.contrast -2);
   }
-  ResponseCmndNumber(Settings.webcam_config.contrast -2);
+  ResponseCmndNumber(Settings->webcam_config.contrast -2);
 }
 
 void CmndWebcamInit(void) {
@@ -1064,10 +1064,10 @@ void CmndWebcamInit(void) {
 #ifdef ENABLE_RTSPSERVER
 void CmndWebRtsp(void) {
   if ((XdrvMailbox.payload >= 0) && (XdrvMailbox.payload <= 1)) {
-    Settings.webcam_config.rtsp = XdrvMailbox.payload;
+    Settings->webcam_config.rtsp = XdrvMailbox.payload;
     TasmotaGlobal.restart_flag = 2;
   }
-  ResponseCmndStateText(Settings.webcam_config.rtsp);
+  ResponseCmndStateText(Settings->webcam_config.rtsp);
 }
 #endif // ENABLE_RTSPSERVER
 

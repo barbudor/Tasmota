@@ -25,7 +25,6 @@
 
 #define SPRINT(A) char str[32];sprintf(str,"val: %d ",A);Serial.println((char*)str);
 
-extern uint8_t *buffer;
 
 #define XDSP_07                7
 #define XI2C_06                6            // See I2CDEVICES.md
@@ -48,39 +47,34 @@ Adafruit_SH1106 *oled1106;
 /*********************************************************************************************/
 
 
-void SH1106InitDriver()
-{
-  if (!Settings.display_model) {
+void SH1106InitDriver() {
+  if (!TasmotaGlobal.i2c_enabled) { return; }
+
+  if (!Settings->display_model) {
     if (I2cSetDevice(OLED_ADDRESS1)) {
-      Settings.display_address[0] = OLED_ADDRESS1;
-      Settings.display_model = XDSP_07;
+      Settings->display_address[0] = OLED_ADDRESS1;
+      Settings->display_model = XDSP_07;
     }
     else if (I2cSetDevice(OLED_ADDRESS2)) {
-      Settings.display_address[0] = OLED_ADDRESS2;
-      Settings.display_model = XDSP_07;
+      Settings->display_address[0] = OLED_ADDRESS2;
+      Settings->display_model = XDSP_07;
     }
   }
 
-  if (XDSP_07 == Settings.display_model) {
-    I2cSetActiveFound(Settings.display_address[0], "SH1106");
+  if (XDSP_07 == Settings->display_model) {
+    I2cSetActiveFound(Settings->display_address[0], "SH1106");
 
-    if (Settings.display_width != SH1106_LCDWIDTH) {
-      Settings.display_width = SH1106_LCDWIDTH;
+    if (Settings->display_width != SH1106_LCDWIDTH) {
+      Settings->display_width = SH1106_LCDWIDTH;
     }
-    if (Settings.display_height != SH1106_LCDHEIGHT) {
-      Settings.display_height = SH1106_LCDHEIGHT;
+    if (Settings->display_height != SH1106_LCDHEIGHT) {
+      Settings->display_height = SH1106_LCDHEIGHT;
     }
-
-    // allocate screen buffer
-    if (buffer) free(buffer);
-    buffer=(unsigned char*)calloc((SH1106_LCDWIDTH * SH1106_LCDHEIGHT) / 8,1);
-    if (!buffer) return;
-
     // init renderer
     oled1106 = new Adafruit_SH1106(SH1106_LCDWIDTH,SH1106_LCDHEIGHT);
-    renderer=oled1106;
-    renderer->Begin(SH1106_SWITCHCAPVCC, Settings.display_address[0],0);
-    renderer->DisplayInit(DISPLAY_INIT_MODE,Settings.display_size,Settings.display_rotate,Settings.display_font);
+    renderer = oled1106;
+    renderer->Begin(SH1106_SWITCHCAPVCC, Settings->display_address[0],0);
+    renderer->DisplayInit(DISPLAY_INIT_MODE,Settings->display_size,Settings->display_rotate,Settings->display_font);
     renderer->setTextColor(1,0);
 
 #ifdef SHOW_SPLASH
@@ -91,6 +85,8 @@ void SH1106InitDriver()
     renderer->Updateframe();
     renderer->DisplayOnff(1);
 #endif
+
+    AddLog(LOG_LEVEL_INFO, PSTR("DSP: SH1106"));
   }
 }
 
@@ -102,15 +98,15 @@ void SH1106PrintLog(void)
 {
   disp_refresh--;
   if (!disp_refresh) {
-    disp_refresh = Settings.display_refresh;
+    disp_refresh = Settings->display_refresh;
     if (!disp_screen_buffer_cols) { DisplayAllocScreenBuffer(); }
 
     char* txt = DisplayLogBuffer('\370');
     if (txt != NULL) {
-      uint8_t last_row = Settings.display_rows -1;
+      uint8_t last_row = Settings->display_rows -1;
 
       renderer->clearDisplay();
-      renderer->setTextSize(Settings.display_size);
+      renderer->setTextSize(Settings->display_size);
       renderer->setCursor(0,0);
       for (byte i = 0; i < last_row; i++) {
         strlcpy(disp_screen_buffer[i], disp_screen_buffer[i +1], disp_screen_buffer_cols);
@@ -132,11 +128,12 @@ void SH1106Time(void)
   char line[12];
 
   renderer->clearDisplay();
-  renderer->setTextSize(Settings.display_size);
-  renderer->setTextFont(Settings.display_font);
+  renderer->setTextSize(Settings->display_size);
+  renderer->setTextFont(Settings->display_font);
   renderer->setCursor(0, 0);
   snprintf_P(line, sizeof(line), PSTR(" %02d" D_HOUR_MINUTE_SEPARATOR "%02d" D_MINUTE_SECOND_SEPARATOR "%02d"), RtcTime.hour, RtcTime.minute, RtcTime.second);  // [ 12:34:56 ]
   renderer->println(line);
+  renderer->println();
   snprintf_P(line, sizeof(line), PSTR("%02d" D_MONTH_DAY_SEPARATOR "%02d" D_YEAR_MONTH_SEPARATOR "%04d"), RtcTime.day_of_month, RtcTime.month, RtcTime.year);   // [01-02-2018]
   renderer->println(line);
   renderer->Updateframe();
@@ -145,8 +142,8 @@ void SH1106Time(void)
 void SH1106Refresh(void)  // Every second
 {
   if (!renderer) return;
-  if (Settings.display_mode) {  // Mode 0 is User text
-    switch (Settings.display_mode) {
+  if (Settings->display_mode) {  // Mode 0 is User text
+    switch (Settings->display_mode) {
       case 1:  // Time
         SH1106Time();
         break;
@@ -175,7 +172,7 @@ bool Xdsp07(uint8_t function)
   if (FUNC_DISPLAY_INIT_DRIVER == function) {
     SH1106InitDriver();
   }
-  else if (XDSP_07 == Settings.display_model) {
+  else if (XDSP_07 == Settings->display_model) {
 
     switch (function) {
       case FUNC_DISPLAY_MODEL:

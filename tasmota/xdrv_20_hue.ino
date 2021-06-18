@@ -172,8 +172,7 @@ const char HUE_API[] PROGMEM = "\x00\x06\x3B\x37\x8C\xEC\x2D\x10\xEC\x9C\x2F\x9D
 
 String HueBridgeId(void)
 {
-  String temp = WiFi.macAddress();
-  temp.replace(":", "");
+  String temp = NetworkUniqueId();
   String bridgeid = temp.substring(0, 6);
   bridgeid += F("FFFE");
   bridgeid += temp.substring(6);
@@ -182,8 +181,7 @@ String HueBridgeId(void)
 
 String HueSerialnumber(void)
 {
-  String serial = WiFi.macAddress();
-  serial.replace(":", "");
+  String serial = NetworkUniqueId();
   serial.toLowerCase();
   return serial;  // 5ccf7f139f3d
 }
@@ -202,21 +200,24 @@ void HueRespondToMSearch(void)
   if (PortUdp.beginPacket(udp_remote_ip, udp_remote_port)) {
     UnishoxStrings msg(HUE_RESP_MSG);
     char response[320];
-    snprintf_P(response, sizeof(response), msg[HUE_RESP_RESPONSE], WiFi.localIP().toString().c_str(), HueBridgeId().c_str());
+    snprintf_P(response, sizeof(response), msg[HUE_RESP_RESPONSE], NetworkAddress().toString().c_str(), HueBridgeId().c_str());
     int len = strlen(response);
     String uuid = HueUuid();
 
     snprintf_P(response + len, sizeof(response) - len, msg[HUE_RESP_ST1], uuid.c_str());
     PortUdp.write(response);
     PortUdp.endPacket();
+    // AddLog(LOG_LEVEL_DEBUG_MORE, PSTR(D_LOG_UPNP "UDP resp=%s"), response);
 
     snprintf_P(response + len, sizeof(response) - len, msg[HUE_RESP_ST2], uuid.c_str(), uuid.c_str());
     PortUdp.write(response);
     PortUdp.endPacket();
+    // AddLog(LOG_LEVEL_DEBUG_MORE, PSTR(D_LOG_UPNP "UDP resp=%s"), response);
 
     snprintf_P(response + len, sizeof(response) - len, msg[HUE_RESP_ST3], uuid.c_str());
     PortUdp.write(response);
     PortUdp.endPacket();
+    // AddLog(LOG_LEVEL_DEBUG_MORE, PSTR(D_LOG_UPNP "UDP resp=%s"), response);
 
     snprintf_P(message, sizeof(message), PSTR(D_3_RESPONSE_PACKETS_SENT));
   } else {
@@ -409,11 +410,11 @@ const char HueConfigResponse_JSON[] PROGMEM = "\x3D\xA7\xB3\xAC\x6B\x3D\x87\x99\
 
 String GetHueDeviceId(uint16_t id)
 {
+  char s[32];
   String deviceid = WiFi.macAddress();
-  deviceid += F(":00:11-");
-  deviceid += String(id);
   deviceid.toLowerCase();
-  return deviceid;  // 5c:cf:7f:13:9f:3d:00:11-1
+  snprintf(s, sizeof(s), "%s:%02x:11-%02x", deviceid.c_str(), (id >> 8) & 0xFF, id & 0xFF);
+  return String(s);  // 5c:cf:7f:13:9f:3d:00:11-01
 }
 
 String GetHueUserId(void)
@@ -478,7 +479,7 @@ char     prev_y_str[24] = "\0";
 uint8_t getLocalLightSubtype(uint8_t device) {
   if (TasmotaGlobal.light_type) {
     if (device >= Light.device) {
-      if (Settings.flag3.pwm_multi_channels) {  // SetOption68 - Enable multi-channels PWM instead of Color PWM
+      if (Settings->flag3.pwm_multi_channels) {  // SetOption68 - Enable multi-channels PWM instead of Color PWM
         return LST_SINGLE;     // If SetOption68, each channel acts like a dimmer
       } else {
         return Light.subtype;  // the actual light
@@ -510,7 +511,7 @@ void HueLightStatus1(uint8_t device, String *response)
 
 #ifdef USE_SHUTTER
   if (ShutterState(device)) {
-    bri = (float)((Settings.shutter_options[device-1] & 1) ? 100 - Settings.shutter_position[device-1] : Settings.shutter_position[device-1]) / 100;
+    bri = (float)((Settings->shutter_options[device-1] & 1) ? 100 - Settings->shutter_position[device-1] : Settings->shutter_position[device-1]) / 100;
   }
 #endif
 
@@ -590,7 +591,7 @@ void HueLightStatus2(uint8_t device, String *response)
   UnishoxStrings msg(HUE_LIGHTS);
   snprintf_P(buf, buf_size, msg[HUE_LIGHTS_STATUS_JSON2],
             EscapeJSONString(fname).c_str(),
-            EscapeJSONString(Settings.user_template_name).c_str(),
+            EscapeJSONString(Settings->user_template_name).c_str(),
             PSTR("Tasmota"),
             GetHueDeviceId(device).c_str());
   *response += buf;
@@ -662,7 +663,7 @@ uint32_t DecodeLightId(uint32_t hue_id, uint16_t * shortaddr = nullptr)
 // Check if the Echo device is of 1st generation, which triggers different results
 inline uint32_t findEchoGeneration(void) {
   // don't try to guess from User-Agent anymore but use SetOption109
-  return Settings.flag4.alexa_gen_1 ? 1 : 2;
+  return Settings->flag4.alexa_gen_1 ? 1 : 2;
 }
 
 void HueGlobalConfig(String *path) {
@@ -726,7 +727,12 @@ void HueLightsCommand(uint8_t device, uint32_t device_id, String &response) {
   if (Webserver->args()) {
     response = "[";
 
+#ifdef ESP82666   // ESP8266 memory is limited, avoid copying and modify in place
     JsonParser parser((char*) Webserver->arg((Webserver->args())-1).c_str());
+#else             // does not work on ESP32, we need to get a fresh copy of the string
+    String request_arg = Webserver->arg((Webserver->args())-1);
+    JsonParser parser((char*) request_arg.c_str());
+#endif
     JsonParserObject root = parser.getRootObject();
 
     JsonParserToken hue_on = root[PSTR("on")];
@@ -755,7 +761,7 @@ void HueLightsCommand(uint8_t device, uint32_t device_id, String &response) {
     }
 
     if (TasmotaGlobal.light_type && (local_light_subtype >= LST_SINGLE)) {
-      if (!Settings.flag3.pwm_multi_channels) {  // SetOption68 - Enable multi-channels PWM instead of Color PWM
+      if (!Settings->flag3.pwm_multi_channels) {  // SetOption68 - Enable multi-channels PWM instead of Color PWM
         light_state.getHSB(&hue, &sat, nullptr);
         bri = light_state.getBri();   // get the combined bri for CT and RGB, not only the RGB one
         ct = light_state.getCT();
@@ -873,12 +879,12 @@ void HueLightsCommand(uint8_t device, uint32_t device_id, String &response) {
     if (change) {
 #ifdef USE_SHUTTER
       if (ShutterState(device)) {
-        AddLog(LOG_LEVEL_DEBUG, PSTR("Settings.shutter_invert: %d"), Settings.shutter_options[device-1] & 1);
+        AddLog(LOG_LEVEL_DEBUG, PSTR("Settings->shutter_invert: %d"), Settings->shutter_options[device-1] & 1);
         ShutterSetPosition(device, bri * 100.0f );
       } else
 #endif
       if (TasmotaGlobal.light_type && (local_light_subtype > LST_NONE)) {   // not relay
-        if (!Settings.flag3.pwm_multi_channels) {  // SetOption68 - Enable multi-channels PWM instead of Color PWM
+        if (!Settings->flag3.pwm_multi_channels) {  // SetOption68 - Enable multi-channels PWM instead of Color PWM
           if (g_gotct) {
             light_controller.changeCTB(ct, bri);
           } else {
@@ -889,11 +895,10 @@ void HueLightsCommand(uint8_t device, uint32_t device_id, String &response) {
           LightSetBri(device, bri);
         }
         if (LST_COLDWARM <= local_light_subtype) {
-          MqttPublishPrefixTopic_P(RESULT_OR_STAT, PSTR(D_CMND_COLOR));
+          MqttPublishPrefixTopicRulesProcess_P(RESULT_OR_STAT, PSTR(D_CMND_COLOR));
         } else {
-          MqttPublishPrefixTopic_P(RESULT_OR_STAT, PSTR(D_CMND_DIMMER));
+          MqttPublishPrefixTopicRulesProcess_P(RESULT_OR_STAT, PSTR(D_CMND_DIMMER));
         }
-        XdrvRulesProcess();
       }
       change = false;
     }
@@ -1080,9 +1085,9 @@ bool Xdrv20(uint8_t function)
   bool result = false;
 
 #if defined(USE_SCRIPT_HUE) || defined(USE_ZIGBEE)
-  if ((EMUL_HUE == Settings.flag2.emulation)) {
+  if ((EMUL_HUE == Settings->flag2.emulation)) {
 #else
-  if (TasmotaGlobal.devices_present && (EMUL_HUE == Settings.flag2.emulation)) {
+  if (TasmotaGlobal.devices_present && (EMUL_HUE == Settings->flag2.emulation)) {
 #endif
     switch (function) {
       case FUNC_WEB_ADD_HANDLER:

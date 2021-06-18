@@ -39,7 +39,6 @@ bool ili9488_init_done = false;
 // currently fixed
 #define BACKPLANE_PIN 2
 
-extern uint8_t *buffer;
 extern uint8_t color_type;
 ILI9488 *ili9488;
 extern const uint16_t picture[];
@@ -49,17 +48,14 @@ extern const uint16_t picture[];
 void ILI9488_InitDriver(void) {
   if (PinUsed(GPIO_ILI9488_CS) && (TasmotaGlobal.spi_enabled & SPI_MOSI)) {
 
-    Settings.display_model = XDSP_08;
+    Settings->display_model = XDSP_08;
 
-    if (Settings.display_width != ILI9488_TFTWIDTH) {
-      Settings.display_width = ILI9488_TFTWIDTH;
+    if (Settings->display_width != ILI9488_TFTWIDTH) {
+      Settings->display_width = ILI9488_TFTWIDTH;
     }
-    if (Settings.display_height != ILI9488_TFTHEIGHT) {
-      Settings.display_height = ILI9488_TFTHEIGHT;
+    if (Settings->display_height != ILI9488_TFTHEIGHT) {
+      Settings->display_height = ILI9488_TFTHEIGHT;
     }
-
-    // disable screen buffer
-    buffer = NULL;
 
     // default colors
     fg_color = ILI9488_WHITE;
@@ -75,8 +71,8 @@ void ILI9488_InitDriver(void) {
 
     ili9488->begin();
     renderer = ili9488;
-    renderer->DisplayInit(DISPLAY_INIT_MODE,Settings.display_size,Settings.display_rotate,Settings.display_font);
-    renderer->dim(Settings.display_dimmer);
+    renderer->DisplayInit(DISPLAY_INIT_MODE,Settings->display_size,Settings->display_rotate,Settings->display_font);
+    renderer->dim(Settings->display_dimmer);
 
 #ifdef SHOW_SPLASH
     // Welcome text
@@ -91,7 +87,7 @@ void ILI9488_InitDriver(void) {
     color_type = COLOR_COLOR;
     // start digitizer
 #ifdef USE_FT5206
-    Touch_Init(Wire);
+    FT5206_Touch_Init(Wire);
 #endif
 
     ili9488_init_done = true;
@@ -149,7 +145,7 @@ bool Xdsp08(uint8_t function)
   if (FUNC_DISPLAY_INIT_DRIVER == function) {
     ILI9488_InitDriver();
   }
-  else if (ili9488_init_done && (XDSP_08 == Settings.display_model)) {
+  else if (ili9488_init_done && (XDSP_08 == Settings->display_model)) {
     switch (function) {
       case FUNC_DISPLAY_MODEL:
         result = true;

@@ -89,6 +89,8 @@ const Z_CommandConverter Z_Commands[] PROGMEM = {
   { Z_(ShutterLift),    0x0102, 0x05, 0x01,   Z_(xx) },            // Lift percentage, 0%=open, 100%=closed
   { Z_(ShutterTilt),    0x0102, 0x08, 0x01,   Z_(xx) },            // Tilt percentage
   { Z_(Shutter),        0x0102, 0xFF, 0x01,   Z_() },
+  // Legrand - Manuf 1021
+  { Z_(LegrandMode),    0xFC40, 0x00, 0x01,   Z_(xx) },
   // Blitzwolf PIR
   { Z_(Occupancy),      0xEF00, 0x01, 0x82,   Z_()},                // Specific decoder for Blitzwolf PIR, empty name means special treatment
   // Decoders only - normally not used to send, and names may be masked by previous definitions
@@ -281,7 +283,7 @@ void convertClusterSpecific(class Z_attribute_list &attr_list, uint16_t cluster,
   uint8_t conv_direction;
   Z_XYZ_Var xyz;
 
-  //AddLog_P(LOG_LEVEL_INFO, PSTR(">>> len = %d - %02X%02X%02X"), payload.len(), payload.get8(0), payload.get8(1), payload.get8(2));
+  //AddLog(LOG_LEVEL_INFO, PSTR(">>> len = %d - %02X%02X%02X"), payload.len(), payload.get8(0), payload.get8(1), payload.get8(2));
   for (uint32_t i = 0; i < sizeof(Z_Commands) / sizeof(Z_Commands[0]); i++) {
     const Z_CommandConverter *conv = &Z_Commands[i];
     uint16_t conv_cluster = pgm_read_word(&conv->cluster);
@@ -297,18 +299,18 @@ void convertClusterSpecific(class Z_attribute_list &attr_list, uint16_t cluster,
           //  - payload exactly matches conv->param (conv->param may be longer)
           //  - payload matches conv->param until 'x', 'y' or 'z'
           const char * p = Z_strings + pgm_read_word(&conv->param_offset);
-          //AddLog_P(LOG_LEVEL_INFO, PSTR(">>>++1 param = %s"), p);
+          //AddLog(LOG_LEVEL_INFO, PSTR(">>>++1 param = %s"), p);
           bool match = true;
           for (uint8_t i = 0; i < payload.len(); i++) {
             const char c1 = pgm_read_byte(p);
             // const char c2 = pgm_read_byte(p+1);
-            //AddLog_P(LOG_LEVEL_INFO, PSTR(">>>++2 c1 = %c, c2 = %c"), c1, c2);
+            //AddLog(LOG_LEVEL_INFO, PSTR(">>>++2 c1 = %c, c2 = %c"), c1, c2);
             if ((0x00 == c1) || isXYZ(c1)) {
               break;
             }
             const char * p2 = p;
             uint32_t nextbyte = parseHex_P(&p2, 2);
-            //AddLog_P(LOG_LEVEL_INFO, PSTR(">>>++3 parseHex_P = %02X"), nextbyte);
+            //AddLog(LOG_LEVEL_INFO, PSTR(">>>++3 parseHex_P = %02X"), nextbyte);
             if (nextbyte != payload.get8(i)) {
               match = false;
               break;
@@ -437,7 +439,7 @@ void convertClusterSpecific(class Z_attribute_list &attr_list, uint16_t cluster,
       // do we send command with endpoint suffix
       char command_suffix[4] = { 0x00 };  // empty string by default
       // if SO101 and multiple endpoints, append endpoint number
-      if (Settings.flag4.zb_index_ep) {
+      if (Settings->flag4.zb_index_ep) {
         if (zigbee_devices.getShortAddr(shortaddr).countEndpoints() > 0) {
           snprintf_P(command_suffix, sizeof(command_suffix), PSTR("%d"), srcendpoint);
         }

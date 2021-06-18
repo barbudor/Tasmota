@@ -52,7 +52,7 @@ enum UserSelectablePins {
   GPIO_SR04_TRIG, GPIO_SR04_ECHO,      // SR04 interface
   GPIO_SDM120_TX, GPIO_SDM120_RX,      // SDM120 Serial interface
   GPIO_SDM630_TX, GPIO_SDM630_RX,      // SDM630 Serial interface
-  GPIO_TM16CLK, GPIO_TM16DIO, GPIO_TM16STB,  // TM1638 interface
+  GPIO_TM1638CLK, GPIO_TM1638DIO, GPIO_TM1638STB,  // TM1638 interface
   GPIO_MP3_DFR562,                     // RB-DFR-562, DFPlayer Mini MP3 Player
   GPIO_HX711_SCK, GPIO_HX711_DAT,      // HX711 Load Cell interface
   GPIO_TX2X_TXD_BLACK,                 // TX20/TX23 Transmission Pin
@@ -150,6 +150,25 @@ enum UserSelectablePins {
   GPIO_NEOPOOL_TX, GPIO_NEOPOOL_RX,    // Sugar Valley RS485 interface
   GPIO_SDM72_TX, GPIO_SDM72_RX,        // SDM72 Serial interface
   GPIO_TM1637CLK, GPIO_TM1637DIO,      // TM1637 interface
+  GPIO_PROJECTOR_CTRL_TX, GPIO_PROJECTOR_CTRL_RX,  // LCD/DLP Projector Serial Control
+  GPIO_SSD1351_DC,
+  GPIO_XPT2046_CS,                     // XPT2046 SPI Chip Select
+  GPIO_CSE7761_TX, GPIO_CSE7761_RX,    // CSE7761 Serial interface (Dual R3)
+  GPIO_VL53L0X_XSHUT1,                 // VL53L0X_XSHUT (the max number of sensors is VL53L0X_MAX_SENSORS)- Used when connecting multiple VL53L0X
+  GPIO_MAX7219CLK, GPIO_MAX7219DIN, GPIO_MAX7219CS, // MAX7219 interface
+  GPIO_TFMINIPLUS_TX, GPIO_TFMINIPLUS_RX,  // TFmini Plus ToF sensor
+  GPIO_ZEROCROSS,
+#ifdef ESP32
+  GPIO_HALLEFFECT,
+  GPIO_EPD_DATA,                       // Base connection EPD driver
+#endif
+  GPIO_INPUT,
+#ifdef ESP32
+  GPIO_KEY1_PD, GPIO_KEY1_INV_PD, GPIO_SWT1_PD,
+#endif
+  GPIO_I2S_OUT_DATA, GPIO_I2S_OUT_CLK, GPIO_I2S_OUT_SLCT,
+  GPIO_I2S_IN_DATA,  GPIO_I2S_IN_CLK,  GPIO_I2S_IN_SLCT,
+  GPIO_INTERRUPT,
   GPIO_SENSOR_END };
 
 enum ProgramSelectablePins {
@@ -157,15 +176,15 @@ enum ProgramSelectablePins {
   GPIO_USER,           // User configurable needs to be 2047
   GPIO_MAX };
 
-#define MAX_OPTIONS_A  2                   // Increase if more bits are used from GpioOptionABits
+#define MAX_OPTIONS_A  4                   // Increase if more bits are used from GpioOptionABits
 
 typedef union {                            // Restricted by MISRA-C Rule 18.4 but so useful...
   uint32_t data;                           // Allow bit manipulation using SetOption
   struct {                                 // GPIO Option_A1 .. Option_A32
     uint32_t pwm1_input : 1;               // bit 0 (v9.2.0.1)   - Option_A1 - (Light) Change PWM1 to input on power off and no fade running (1)
-    uint32_t spare01 : 1;                  // bit 1
-    uint32_t spare02 : 1;                  // bit 2
-    uint32_t spare03 : 1;                  // bit 3
+    uint32_t dummy_energy : 1;             // bit 1 (v9.3.1.2)   - Option_A2 - (Energy) Enable dummy values
+    uint32_t udisplay_driver : 1;          // bit 2 (v9.3.1.2)   - Option_A3 - (Display) Universal display driver
+    uint32_t enable_ccloader : 1;          // bit 3 (v9.4.0.5)   - Option_A4 - (Zigbee) Enable CCLoader using Zigbee Rx/Tx/Rst Gpios
     uint32_t spare04 : 1;                  // bit 4
     uint32_t spare05 : 1;                  // bit 5
     uint32_t spare06 : 1;                  // bit 6
@@ -211,7 +230,7 @@ const char kSensorNames[] PROGMEM =
   D_SENSOR_I2C_SCL "|" D_SENSOR_I2C_SDA "|"
   D_SENSOR_SPI_MISO "|" D_SENSOR_SPI_MOSI "|" D_SENSOR_SPI_CLK "|" D_SENSOR_SPI_CS "|" D_SENSOR_SPI_DC "|"
   D_SENSOR_SSPI_MISO "|" D_SENSOR_SSPI_MOSI "|" D_SENSOR_SSPI_SCLK "|" D_SENSOR_SSPI_CS "|" D_SENSOR_SSPI_DC "|"
-  D_SENSOR_BACKLIGHT "|" D_SENSOR_OLED_RESET "|"
+  D_SENSOR_BACKLIGHT "|" D_SENSOR_DISP_RESET "|"
   D_SENSOR_IRSEND "|" D_SENSOR_IRRECV "|"
   D_SENSOR_RFSEND "|" D_SENSOR_RFRECV "|"
   D_SENSOR_DHT11 "|" D_SENSOR_AM2301 "|" D_SENSOR_SI7021 "|" D_SENSOR_DHT11 "_o|"
@@ -320,6 +339,25 @@ const char kSensorNames[] PROGMEM =
   D_SENSOR_NEOPOOL_TX "|" D_SENSOR_NEOPOOL_RX "|"
   D_SENSOR_SDM72_TX "|" D_SENSOR_SDM72_RX "|"
   D_SENSOR_TM1637_CLK "|" D_SENSOR_TM1637_DIO "|"
+  D_SENSOR_PROJECTOR_CTRL_TX "|" D_SENSOR_PROJECTOR_CTRL_RX "|"
+  D_SENSOR_SSD1351_DC "|"
+  D_SENSOR_XPT2046_CS "|"
+  D_SENSOR_CSE7761_TX "|" D_SENSOR_CSE7761_RX "|"
+  D_SENSOR_VL53L0X_XSHUT "|"
+  D_SENSOR_MAX7219_CLK "|" D_SENSOR_MAX7219_DIN "|" D_SENSOR_MAX7219_CS "|"
+  D_SENSOR_TFMINIPLUS_TX "|" D_SENSOR_TFMINIPLUS_RX "|"
+  D_SENSOR_ZEROCROSS "|"
+#ifdef ESP32
+  D_SENSOR_HALLEFFECT "|"
+  D_SENSOR_EPD_DATA "|"
+#endif
+  D_SENSOR_INPUT "|"
+#ifdef ESP32
+  D_SENSOR_BUTTON "_d|" D_SENSOR_BUTTON "_id|" D_SENSOR_SWITCH "_d|"
+#endif
+  D_SENSOR_I2S_OUT_DATA "|" D_SENSOR_I2S_OUT_CLK "|" D_SENSOR_I2S_OUT_SLCT "|"
+  D_SENSOR_I2S_IN_DATA  "|" D_SENSOR_I2S_IN_CLK  "|" D_SENSOR_I2S_IN_SLCT  "|"
+  D_SENSOR_INTERRUPT "|"
   ;
 
 const char kSensorNamesFixed[] PROGMEM =
@@ -336,11 +374,20 @@ const uint16_t kGpioNiceList[] PROGMEM = {
   AGPIO(GPIO_OPTION_A) + MAX_OPTIONS_A, // Device specific options
   AGPIO(GPIO_KEY1) + MAX_KEYS,          // Buttons
   AGPIO(GPIO_KEY1_NP) + MAX_KEYS,
+#ifdef ESP32
+  AGPIO(GPIO_KEY1_PD) + MAX_KEYS,
+#endif
   AGPIO(GPIO_KEY1_INV) + MAX_KEYS,
   AGPIO(GPIO_KEY1_INV_NP) + MAX_KEYS,
+#ifdef ESP32
+  AGPIO(GPIO_KEY1_INV_PD) + MAX_KEYS,
   AGPIO(GPIO_KEY1_TC) + MAX_KEYS,       // Touch button
+#endif
   AGPIO(GPIO_SWT1) + MAX_SWITCHES,      // User connected external switches
   AGPIO(GPIO_SWT1_NP) + MAX_SWITCHES,
+#ifdef ESP32
+  AGPIO(GPIO_SWT1_PD) + MAX_SWITCHES,
+#endif
 #ifdef ROTARY_V1
   AGPIO(GPIO_ROT1A) + MAX_ROTARIES,     // Rotary A Pin
   AGPIO(GPIO_ROT1B) + MAX_ROTARIES,     // Rotary B Pin
@@ -363,6 +410,10 @@ const uint16_t kGpioNiceList[] PROGMEM = {
 #endif
   AGPIO(GPIO_LEDLNK),                   // Link led
   AGPIO(GPIO_LEDLNK_INV),               // Inverted link led
+#ifdef USE_BERRY
+  AGPIO(GPIO_INPUT) + MAX_SWITCHES,     // Pure digital input to be read via Berry
+  AGPIO(GPIO_INTERRUPT) + MAX_SWITCHES, // Interrupt pins to be catched by Berry
+#endif
   AGPIO(GPIO_OUTPUT_HI),                // Fixed output high
   AGPIO(GPIO_OUTPUT_LO),                // Fixed output low
 #ifdef USE_FTC532
@@ -378,16 +429,25 @@ const uint16_t kGpioNiceList[] PROGMEM = {
 \*-------------------------------------------------------------------------------------------*/
 
 #ifdef USE_I2C
-  AGPIO(GPIO_I2C_SCL),                  // I2C SCL
-  AGPIO(GPIO_I2C_SDA),                  // I2C SDA
+  AGPIO(GPIO_I2C_SCL) + MAX_I2C,        // I2C SCL
+  AGPIO(GPIO_I2C_SDA) + MAX_I2C,        // I2C SDA
+#endif
+
+#ifdef USE_I2S
+  AGPIO(GPIO_I2S_OUT_DATA) + MAX_I2S,   // I2S Out Data
+  AGPIO(GPIO_I2S_OUT_CLK) + MAX_I2S,    // I2C Out Clock
+  AGPIO(GPIO_I2S_OUT_SLCT) + MAX_I2S,   // I2C Out Word Select
+  AGPIO(GPIO_I2S_IN_DATA) + MAX_I2S,    // I2S In Data
+  AGPIO(GPIO_I2S_IN_CLK) + MAX_I2S,     // I2C In Clock
+  AGPIO(GPIO_I2S_IN_SLCT) + MAX_I2S,    // I2C In Word Select
 #endif
 
 #ifdef USE_SPI
-  AGPIO(GPIO_SPI_MISO),                 // SPI MISO
-  AGPIO(GPIO_SPI_MOSI),                 // SPI MOSI
-  AGPIO(GPIO_SPI_CLK),                  // SPI Clk
-  AGPIO(GPIO_SPI_CS),                   // SPI Chip Select
-  AGPIO(GPIO_SPI_DC),                   // SPI Data Direction
+  AGPIO(GPIO_SPI_MISO) + MAX_SPI,       // SPI MISO
+  AGPIO(GPIO_SPI_MOSI) + MAX_SPI,       // SPI MOSI
+  AGPIO(GPIO_SPI_CLK) + MAX_SPI,        // SPI Clk
+  AGPIO(GPIO_SPI_CS) + MAX_SPI,         // SPI Chip Select
+  AGPIO(GPIO_SPI_DC) + MAX_SPI,         // SPI Data Direction
 #ifdef USE_NRF24
   AGPIO(GPIO_NRF24_CS),
   AGPIO(GPIO_NRF24_DC),
@@ -400,15 +460,20 @@ const uint16_t kGpioNiceList[] PROGMEM = {
   AGPIO(GPIO_SDCARD_CS),
 #endif  // USE_SDCARD
 #endif  // USE_SPI
+
   AGPIO(GPIO_SSPI_MISO),      // Software SPI Master Input Client Output
   AGPIO(GPIO_SSPI_MOSI),      // Software SPI Master Output Client Input
   AGPIO(GPIO_SSPI_SCLK),      // Software SPI Serial Clock
   AGPIO(GPIO_SSPI_CS),        // Software SPI Chip Select
   AGPIO(GPIO_SSPI_DC),        // Software SPI Data or Command
-#ifdef USE_DISPLAY
+
+#if defined(USE_DISPLAY) || defined(USE_LVGL)
 #ifdef USE_DISPLAY_ILI9341
   AGPIO(GPIO_ILI9341_CS),
   AGPIO(GPIO_ILI9341_DC),
+#ifdef USE_XPT2046
+  AGPIO(GPIO_XPT2046_CS),     // XPT2046 SPI Chip Select
+#endif
 #endif  // USE_DISPLAY_ILI9341
 #ifdef USE_DISPLAY_ILI9488
   AGPIO(GPIO_ILI9488_CS),
@@ -421,6 +486,7 @@ const uint16_t kGpioNiceList[] PROGMEM = {
 #endif  // USE_DISPLAY_EPAPER_42
 #ifdef USE_DISPLAY_SSD1351
   AGPIO(GPIO_SSD1351_CS),
+  AGPIO(GPIO_SSD1351_DC),
 #endif  // USE_DISPLAY_SSD1351
 #ifdef USE_DISPLAY_RA8876
   AGPIO(GPIO_RA8876_CS),
@@ -436,9 +502,15 @@ const uint16_t kGpioNiceList[] PROGMEM = {
 #ifdef USE_DISPLAY_TM1637
   AGPIO(GPIO_TM1637CLK),
   AGPIO(GPIO_TM1637DIO),
+  AGPIO(GPIO_TM1638CLK),
+  AGPIO(GPIO_TM1638DIO),
+  AGPIO(GPIO_TM1638STB),
 #endif  // USE_DISPLAY_TM1637
   AGPIO(GPIO_BACKLIGHT),      // Display backlight control
   AGPIO(GPIO_OLED_RESET),     // OLED Display Reset
+#ifdef ESP32
+  AGPIO(GPIO_EPD_DATA),       // Base connection EPD driver
+#endif
 #endif  // USE_DISPLAY
 
 #ifdef USE_MAX31865
@@ -534,13 +606,17 @@ const uint16_t kGpioNiceList[] PROGMEM = {
   AGPIO(GPIO_SR04_ECHO),      // SR04 Ech/RXo pin
 #endif
 #ifdef USE_TM1638
-  AGPIO(GPIO_TM16CLK),        // TM1638 Clock
-  AGPIO(GPIO_TM16DIO),        // TM1638 Data I/O
-  AGPIO(GPIO_TM16STB),        // TM1638 Strobe
+  AGPIO(GPIO_TM1638CLK),      // TM1638 Clock
+  AGPIO(GPIO_TM1638DIO),      // TM1638 Data I/O
+  AGPIO(GPIO_TM1638STB),      // TM1638 Strobe
 #endif
 #ifdef USE_HX711
   AGPIO(GPIO_HX711_SCK),      // HX711 Load Cell clock
   AGPIO(GPIO_HX711_DAT),      // HX711 Load Cell data
+#endif
+#ifdef USE_TFMINIPLUS
+  AGPIO(GPIO_TFMINIPLUS_TX),      // TFmini Plus TX pin
+  AGPIO(GPIO_TFMINIPLUS_RX),      // TFmini Plus RX pin
 #endif
 
 /*-------------------------------------------------------------------------------------------*\
@@ -557,6 +633,10 @@ const uint16_t kGpioNiceList[] PROGMEM = {
 #endif
 #if defined(USE_I2C) && defined(USE_ADE7953)
   AGPIO(GPIO_ADE7953_IRQ),    // ADE7953 IRQ
+#endif
+#ifdef USE_CSE7761
+  AGPIO(GPIO_CSE7761_TX),     // CSE7761 Serial interface (Dual R3)
+  AGPIO(GPIO_CSE7761_RX),     // CSE7761 Serial interface (Dual R3)
 #endif
 #ifdef USE_CSE7766
   AGPIO(GPIO_CSE7766_TX),     // CSE7766 Serial interface (S31 and Pow R2)
@@ -618,6 +698,7 @@ const uint16_t kGpioNiceList[] PROGMEM = {
   AGPIO(GPIO_SDM72_TX),      // SDM72 Serial interface
   AGPIO(GPIO_SDM72_RX),      // SDM72 Serial interface
 #endif
+  AGPIO(GPIO_ZEROCROSS),
 #endif  // USE_ENERGY_SENSOR
 
 /*-------------------------------------------------------------------------------------------*\
@@ -635,7 +716,7 @@ const uint16_t kGpioNiceList[] PROGMEM = {
 #ifdef USE_ZIGBEE
   AGPIO(GPIO_ZIGBEE_TX),      // Zigbee Serial interface
   AGPIO(GPIO_ZIGBEE_RX),      // Zigbee Serial interface
-  AGPIO(GPIO_ZIGBEE_RST),     // Zigbee reset
+  AGPIO(GPIO_ZIGBEE_RST) + 2, // Zigbee reset, pin 1 is reset, pin 2 is bootloader mode
 #endif
 #ifdef USE_MHZ19
   AGPIO(GPIO_MHZ_TXD),        // MH-Z19 Serial interface
@@ -760,12 +841,28 @@ const uint16_t kGpioNiceList[] PROGMEM = {
   AGPIO(GPIO_NEOPOOL_TX),      // Sugar Valley RS485 Interface
   AGPIO(GPIO_NEOPOOL_RX),      // Sugar Valley RS485 Interface
 #endif
+#ifdef USE_PROJECTOR_CTRL
+  AGPIO(GPIO_PROJECTOR_CTRL_TX),      // LCD/DLP Projector Serial Control
+  AGPIO(GPIO_PROJECTOR_CTRL_RX),      // LCD/DLP Projector Serial Control
+#endif
+#ifdef USE_VL53L0X
+  AGPIO(GPIO_VL53L0X_XSHUT1) + VL53L0X_MAX_SENSORS,  // When using multiple VL53L0X.
+#endif
+
+#ifdef USE_DISPLAY_MAX7219
+  AGPIO(GPIO_MAX7219CLK),
+  AGPIO(GPIO_MAX7219DIN),
+  AGPIO(GPIO_MAX7219CS),
+#endif  // USE_DISPLAY_MAX7219
 
 /*-------------------------------------------------------------------------------------------*\
  * ESP32 specifics
 \*-------------------------------------------------------------------------------------------*/
 
 #ifdef ESP32
+#if CONFIG_IDF_TARGET_ESP32
+  AGPIO(GPIO_HALLEFFECT) + 2,             // Hall effect sensor connected to GPIO36 and 39
+#endif  // CONFIG_IDF_TARGET_ESP32
 #ifdef USE_WEBCAM
   AGPIO(GPIO_WEBCAM_PWDN),
   AGPIO(GPIO_WEBCAM_RESET),
@@ -783,7 +880,7 @@ const uint16_t kGpioNiceList[] PROGMEM = {
 #ifdef USE_ETHERNET
   AGPIO(GPIO_ETH_PHY_POWER),
   AGPIO(GPIO_ETH_PHY_MDC),
-  AGPIO(GPIO_ETH_PHY_MDIO),  // Ethernet
+  AGPIO(GPIO_ETH_PHY_MDIO),               // Ethernet
 #endif  // USE_ETHERNET
 
 /*-------------------------------------------------------------------------------------------*\
@@ -880,6 +977,17 @@ typedef struct MYTMPLT8266 {
 
 #endif  // ESP8266
 #ifdef ESP32
+#if CONFIG_IDF_TARGET_ESP32C3
+
+#define MAX_GPIO_PIN       22   // Number of supported GPIO
+#define MIN_FLASH_PINS     0    // Number of flash chip pins unusable for configuration (GPIO6, 7, 8 and 11)
+#define MAX_USER_PINS      22   // MAX_GPIO_PIN - MIN_FLASH_PINS
+#define WEMOS_MODULE       0    // Wemos module
+
+//                                  0 1 2 3 4 5 6 7 8 9101112131415161718192021
+const char PINS_WEMOS[] PROGMEM = "AOAOAOAOAOAOIOIOIOIOIOFLFLFLFLFLFLFLIOIORXTX";
+
+#else // v CONFIG_IDF_TARGET_ESP32C3 v
 
 #define MAX_GPIO_PIN       40   // Number of supported GPIO
 #define MIN_FLASH_PINS     4    // Number of flash chip pins unusable for configuration (GPIO6, 7, 8 and 11)
@@ -889,6 +997,7 @@ typedef struct MYTMPLT8266 {
 //                                  0 1 2 3 4 5 6 7 8 9101112131415161718192021222324252627282930313233343536373839
 const char PINS_WEMOS[] PROGMEM = "IOTXIORXIOIOflashcFLFLolIOIOIOIOIOIOIOIOIOIOIOIOIOIOIOIOIOIOIOIOAOAOIAIAIAIAIAIA";
 
+#endif // CONFIG_IDF_TARGET_ESP32C3
 #endif  // ESP32
 
 //********************************************************************************************
@@ -2346,6 +2455,63 @@ const mytmplt8285 kModules8285[TMP_MAXMODULE_8266 - TMP_WEMOS] PROGMEM = {
 #endif  // ESP8266
 
 #ifdef ESP32
+#if CONFIG_IDF_TARGET_ESP32C3
+/********************************************************************************************\
+ * ESP32 Module templates
+\********************************************************************************************/
+
+#define USER_MODULE        255
+
+// Supported hardware modules
+enum SupportedModules {
+  WEMOS,
+  MAXMODULE };
+
+// Default module settings
+const uint8_t kModuleNiceList[] PROGMEM = {
+  WEMOS,
+};
+
+// !!! Update this list in the same order as kModuleNiceList !!!
+const char kModuleNames[] PROGMEM =
+  "ESP32C3|"
+  ;
+
+// !!! Update this list in the same order as SupportedModules !!!
+const mytmplt kModules[] PROGMEM = {
+  {                              // Generic ESP32C3 device
+    AGPIO(GPIO_USER),            // 0       IO                  GPIO0, ADC1_CH0, XTAL_32K_P
+    AGPIO(GPIO_USER),            // 1       IO                  GPIO1, ADC1_CH1, XTAL_32K_N
+    AGPIO(GPIO_USER),            // 2       IO                  GPIO2, ADC1_CH2, FSPIQ
+    AGPIO(GPIO_USER),            // 3       IO                  GPIO3, ADC1_CH3
+    AGPIO(GPIO_USER),            // 4       IO                  GPIO4, ADC1_CH4, FSPIHD, MTMS
+    AGPIO(GPIO_USER),            // 5       IO                  GPIO5, ADC2_CH0, FSPIWP, MTDI
+    AGPIO(GPIO_USER),            // 6       IO                  GPIO6, FSPICLK, MTCK
+    AGPIO(GPIO_USER),            // 7       IO                  GPIO7, FSPID, MTDO
+    AGPIO(GPIO_USER),            // 8       IO                  GPIO8
+    AGPIO(GPIO_USER),            // 9       IO                  GPIO9
+    AGPIO(GPIO_USER),            // 10      IO                  GPIO10
+    0,                           // 11      IO                  GPIO11, output power supply for flash
+    0,                           // 12      IO                  GPIO12, SPIHD
+    0,                           // 13      IO                  GPIO13, SPIWP
+    0,                           // 14      IO                  GPIO14, SPICS0
+    0,                           // 15      IO                  GPIO15, SPICLK
+    0,                           // 16      IO                  GPIO16, SPID
+    0,                           // 17      IO                  GPIO17, SPIQ
+    AGPIO(GPIO_USER),            // 18      IO                  GPIO18, USB_D
+    AGPIO(GPIO_USER),            // 19      IO                  GPIO19, USB_D+
+    AGPIO(GPIO_USER),            // 20      IO     RXD0         GPIO20, U0RXD
+    AGPIO(GPIO_USER),            // 21      IO     TXD0         GPIO21, U0TXD
+  },
+};
+
+/*********************************************************************************************\
+ Known templates
+
+
+\*********************************************************************************************/
+
+#else // CONFIG_IDF_TARGET_ESP32C3 - now ESP32
 /********************************************************************************************\
  * ESP32 Module templates
 \********************************************************************************************/
@@ -2459,9 +2625,9 @@ const mytmplt kModules[] PROGMEM = {
   {                              // ESP32_CAM_AITHINKER - Any ESP32 device with webcam (ESP32)
     AGPIO(GPIO_WEBCAM_XCLK),     // 0       (I)O                GPIO0, CAM_XCLK
     AGPIO(GPIO_USER),            // 1       IO     TXD0         GPIO1, U0TXD, CLK_OUT3, EMAC_RXD2
-    AGPIO(GPIO_USER),            // 2       IO                  GPIO2, ADC2_CH2, TOUCH2, RTC_GPIO12, HSPIWP, HS2_DATA0, SD_DATA0
+    AGPIO(GPIO_SPI_MISO),        // 2       IO                  GPIO2, VSPI_MISO
     AGPIO(GPIO_USER),            // 3       IO     RXD0         GPIO3, U0RXD, CLK_OUT2
-    AGPIO(GPIO_USER),            // 4       IO                  GPIO4, ADC2_CH0, TOUCH0, RTC_GPIO10, HSPIHD, HS2_DATA1, SD_DATA1, EMAC_TX_ER
+    AGPIO(GPIO_PWM1),            // 4       IO                  GPIO4, Flashlight
     AGPIO(GPIO_WEBCAM_DATA),     // 5       IO                  GPIO5, CAM_DATA1
                                  // 6       IO                  GPIO6, Flash CLK
                                  // 7       IO                  GPIO7, Flash D0
@@ -2470,9 +2636,9 @@ const mytmplt kModules[] PROGMEM = {
     AGPIO(GPIO_USER),            // 10      IO                  GPIO10, Flash D3, U1TXD
                                  // 11      IO                  GPIO11, Flash CMD
     AGPIO(GPIO_USER),            // 12      (I)O                GPIO12, ADC2_CH5, TOUCH5, RTC_GPIO15, MTDI, HSPIQ, HS2_DATA2, SD_DATA2, EMAC_TXD3       (If driven High, flash voltage (VDD_SDIO) is 1.8V not default 3.3V. Has internal pull-down, so unconnected = Low = 3.3V. May prevent flashing and/or booting if 3.3V flash is connected and pulled high. See ESP32 datasheet for more details.)
-    AGPIO(GPIO_USER),            // 13      IO                  GPIO13, ADC2_CH4, TOUCH4, RTC_GPIO14, MTCK, HSPID, HS2_DATA3, SD_DATA3, EMAC_RX_ER
-    AGPIO(GPIO_USER),            // 14      IO                  GPIO14, ADC2_CH6, TOUCH6, RTC_GPIO16, MTMS, HSPICLK, HS2_CLK, SD_CLK, EMAC_TXD2
-    AGPIO(GPIO_USER),            // 15      (I)O                GPIO15, ADC2_CH3, TOUCH3, MTDO, HSPICS0, RTC_GPIO13, HS2_CMD, SD_CMD, EMAC_RXD3         (If driven Low, silences boot messages from normal boot. Has internal pull-up, so unconnected = High = normal output.)
+    AGPIO(GPIO_SDCARD_CS),       // 13      IO                  GPIO13, VSPI_CS_TFLASH
+    AGPIO(GPIO_SPI_CLK),         // 14      IO                  GPIO14, VSPI_CLK
+    AGPIO(GPIO_SPI_MOSI),        // 15      (I)O                GPIO15, VSPI_MOSI                                                                       (If driven Low, silences boot messages from normal boot. Has internal pull-up, so unconnected = High = normal output.)
     AGPIO(GPIO_USER),            // 16      IO                  GPIO16, HS1_DATA4, U2RXD, EMAC_CLK_OUT
     AGPIO(GPIO_USER),            // 17      IO                  GPIO17, HS1_DATA5, U2TXD, EMAC_CLK_OUT_180
     AGPIO(GPIO_WEBCAM_DATA) +1,  // 18      IO                  GPIO18, CAM_DATA2
@@ -2610,7 +2776,7 @@ const mytmplt kModules[] PROGMEM = {
     AGPIO(GPIO_USER),            // 2       IO                  GPIO2, SPKR_DATA
     AGPIO(GPIO_USER),            // 3       IO     RXD0         GPIO3, U0RXD
     AGPIO(GPIO_SDCARD_CS),       // 4       IO                  GPIO4, SPI_CS_CARD
-    0,                           // 5       IO                  GPIO5, SPI_CS_LCD
+    AGPIO(GPIO_ILI9341_CS),      // 5       IO                  GPIO5, SPI_CS_LCD
                                  // 6       IO                  GPIO6, Flash CLK
                                  // 7       IO                  GPIO7, Flash D0
                                  // 8       IO                  GPIO8, Flash D1
@@ -2620,7 +2786,7 @@ const mytmplt kModules[] PROGMEM = {
     0,                           // 12      (I)O                GPIO12, SPKR_CLK
     AGPIO(GPIO_USER),            // 13      IO                  GPIO13, ADC2_CH4, TOUCH4, RTC_GPIO14, MTCK, HSPID, HS2_DATA3, SD_DATA3, EMAC_RX_ER
     AGPIO(GPIO_USER),            // 14      IO                  GPIO14, ADC2_CH6, TOUCH6, RTC_GPIO16, MTMS, HSPICLK, HS2_CLK, SD_CLK, EMAC_TXD2
-    0,                           // 15      (I)O                GPIO15, SPI_DC_LCD
+    AGPIO(GPIO_ILI9341_DC),      // 15      (I)O                GPIO15, SPI_DC_LCD
     0,                           // 16      IO                  GPIO16, PSRAM_CS
     0,                           // 17      IO                  GPIO17, PSRAM_CLK
     AGPIO(GPIO_SPI_CLK),         // 18      IO                  GPIO18, SPI_CLK
@@ -2660,6 +2826,7 @@ const mytmplt kModules[] PROGMEM = {
 
 \*********************************************************************************************/
 
+#endif // CONFIG_IDF_TARGET_ESP32C3
 #endif  // ESP32
 
 #endif  // _TASMOTA_TEMPLATE_H_

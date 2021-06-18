@@ -50,7 +50,6 @@
   #define BACKPLANE_PIN 5
   #endif // USE_LANBON_L8
 
-extern uint8_t *buffer;
 extern uint8_t color_type;
 Arduino_ST7789 *st7789;
 
@@ -65,17 +64,14 @@ void ST7789_InitDriver(void) {
   if (PinUsed(GPIO_ST7789_DC) &&  // This device does not need CS which breaks SPI bus usage
      ((TasmotaGlobal.soft_spi_enabled & SPI_MOSI) || (TasmotaGlobal.spi_enabled & SPI_MOSI))) {
 
-    Settings.display_model = XDSP_12;
+    Settings->display_model = XDSP_12;
 
-    if (!Settings.display_width) {
-      Settings.display_width = 240;
+    if (!Settings->display_width) {
+      Settings->display_width = 240;
     }
-    if (!Settings.display_height) {
-      Settings.display_height = 240;
+    if (!Settings->display_height) {
+      Settings->display_height = 240;
     }
-
-    // disable screen buffer
-    buffer = NULL;
 
     // default colors
     fg_color = ST7789_WHITE;
@@ -94,16 +90,16 @@ void ST7789_InitDriver(void) {
       st7789 = new Arduino_ST7789(Pin(GPIO_ST7789_DC), Pin(GPIO_OLED_RESET), Pin(GPIO_ST7789_CS), bppin);
     }
 
-    st7789->init(Settings.display_width,Settings.display_height);
+    st7789->init(Settings->display_width,Settings->display_height);
     renderer = st7789;
-    renderer->DisplayInit(DISPLAY_INIT_MODE,Settings.display_size,Settings.display_rotate,Settings.display_font);
-    renderer->dim(Settings.display_dimmer);
+    renderer->DisplayInit(DISPLAY_INIT_MODE,Settings->display_size,Settings->display_rotate,Settings->display_font);
+    renderer->dim(Settings->display_dimmer);
 
 #ifdef SHOW_SPLASH
     // Welcome text
     renderer->setTextColor(ST7789_WHITE,ST7789_BLACK);
     renderer->setTextFont(2);
-    renderer->DrawStringAt(30, (Settings.display_height-12)/2, "ST7789 TFT!", ST7789_WHITE,0);
+    renderer->DrawStringAt(30, (Settings->display_height-12)/2, "ST7789 TFT!", ST7789_WHITE,0);
     delay(1000);
 #endif
 
@@ -112,6 +108,8 @@ void ST7789_InitDriver(void) {
 #ifdef ESP32
 #ifdef USE_FT5206
     // start digitizer with fixed adress and pins for esp32
+    #undef SDA_2
+    #undef SCL_2
     #define SDA_2 23
     #define SCL_2 32
   #ifdef USE_LANBON_L8
@@ -121,7 +119,7 @@ void ST7789_InitDriver(void) {
     #define SCL_2 0
   #endif // USE_LANBON_L8
     Wire1.begin(SDA_2, SCL_2, 400000);
-    Touch_Init(Wire1);
+    FT5206_Touch_Init(Wire1);
 #endif // USE_FT5206
 #endif // ESP32
 
@@ -185,7 +183,7 @@ bool Xdsp12(uint8_t function)
   if (FUNC_DISPLAY_INIT_DRIVER == function) {
     ST7789_InitDriver();
   }
-  else if (st7789_init_done && (XDSP_12 == Settings.display_model)) {
+  else if (st7789_init_done && (XDSP_12 == Settings->display_model)) {
       switch (function) {
         case FUNC_DISPLAY_MODEL:
           result = true;

@@ -438,7 +438,7 @@ static const Zigbee_Instruction zb_prog[] PROGMEM = {
     ZI_SEND(ZBS_PFGK)                         // check PFGK on ZB1.2
     ZI_WAIT_RECV(1000, ZBR_PFGK)
     ZI_GOTO(ZIGBEE_LABEL_START_COORD)
-    
+
   ZI_LABEL(ZIGBEE_LABEL_ZB3_INIT)
     ZI_SEND(ZBS_PFGK3)                        // check PFGK on ZB3
     ZI_WAIT_RECV(1000, ZBR_PFGK3)
@@ -466,6 +466,10 @@ static const Zigbee_Instruction zb_prog[] PROGMEM = {
     ZI_WAIT_RECV(1000, ZBR_AF_REGISTER)
     ZI_SEND(ZBS_AF_REGISTER0B)                    // Z_AF register for endpoint 0B, profile 0x0104 Home Automation
     ZI_WAIT_RECV(1000, ZBR_AF_REGISTER)
+    // Write again channels, see https://github.com/Koenkk/zigbee-herdsman/blob/37bea20ba04ee5d4938abc21a7569b43f831de32/src/adapter/z-stack/adapter/startZnp.ts#L244-L245
+    ZI_SEND(ZBS_W_CHANN)                          // write CHANNEL
+    ZI_WAIT_RECV(1000, ZBR_WNV_OK)
+
     // redo Z_ZDO:activeEpReq to check that Ep are available
     ZI_SEND(ZBS_ZDO_ACTIVEEPREQ)                  // Z_ZDO:activeEpReq
     ZI_WAIT_RECV(1000, ZBR_ZDO_ACTIVEEPREQ)
@@ -481,8 +485,12 @@ static const Zigbee_Instruction zb_prog[] PROGMEM = {
     ZI_MQTT_STATE(ZIGBEE_STATUS_OK, kStarted)
     ZI_LOG(LOG_LEVEL_INFO, kZigbeeStarted)
     ZI_CALL(&Z_State_Ready, 1)                    // Now accept incoming messages
+    ZI_CALL(&Z_Prepare_Storage, 0)
     ZI_CALL(&Z_Load_Devices, 0)
+    ZI_CALL(&Z_Load_Data, 0)
+    ZI_CALL(&Z_Set_Save_Data_Timer, 0)
     ZI_CALL(&Z_Query_Bulbs, 0)
+
   ZI_LABEL(ZIGBEE_LABEL_MAIN_LOOP)
     ZI_WAIT_FOREVER()
     ZI_GOTO(ZIGBEE_LABEL_READY)
@@ -623,7 +631,9 @@ ZBM(ZBS_SET_ADDR_TABLE,   EZSP_setConfigurationValue, 0x00 /*high*/, EZSP_CONFIG
 ZBM(ZBS_SET_MCAST_TABLE,  EZSP_setConfigurationValue, 0x00 /*high*/, EZSP_CONFIG_MULTICAST_TABLE_SIZE, 0x10, 0x00)            // 5300061000
 ZBM(ZBS_SET_STK_PROF,     EZSP_setConfigurationValue, 0x00 /*high*/, EZSP_CONFIG_STACK_PROFILE, 0x02, 0x00)                   // 53000C0200
 ZBM(ZBS_SET_SEC_LEVEL,    EZSP_setConfigurationValue, 0x00 /*high*/, EZSP_CONFIG_SECURITY_LEVEL, 0x05, 0x00)                  // 53000D0500
-ZBM(ZBS_SET_MAX_DEVICES,  EZSP_setConfigurationValue, 0x00 /*high*/, EZSP_CONFIG_MAX_END_DEVICE_CHILDREN, 0x20, 0x00)         // 5300111800
+#ifdef USE_ZIGBEE_FORCE_NO_CHILDREN
+ZBM(ZBS_SET_MAX_DEVICES,  EZSP_setConfigurationValue, 0x00 /*high*/, EZSP_CONFIG_MAX_END_DEVICE_CHILDREN, 0x00, 0x00)         // 5300112000
+#endif
 ZBM(ZBS_SET_INDIRECT_TMO, EZSP_setConfigurationValue, 0x00 /*high*/, EZSP_CONFIG_INDIRECT_TRANSMISSION_TIMEOUT, 0x00, 0x1E)   // 530012001E
 ZBM(ZBS_SET_TC_CACHE,     EZSP_setConfigurationValue, 0x00 /*high*/, EZSP_CONFIG_TRUST_CENTER_ADDRESS_CACHE_SIZE, 0x02, 0x00) // 5300190200
 ZBM(ZBS_SET_ROUTE_TBL,    EZSP_setConfigurationValue, 0x00 /*high*/, EZSP_CONFIG_SOURCE_ROUTE_TABLE_SIZE, 0x10, 0x00)         // 53001A1000
@@ -829,7 +839,9 @@ static const Zigbee_Instruction zb_prog[] PROGMEM = {
     ZI_SEND(ZBS_SET_MCAST_TABLE)        ZI_WAIT_RECV(2500, ZBR_SET_OK)
     ZI_SEND(ZBS_SET_STK_PROF)           ZI_WAIT_RECV(2500, ZBR_SET_OK)
     ZI_SEND(ZBS_SET_SEC_LEVEL)          ZI_WAIT_RECV(2500, ZBR_SET_OK)
+  #ifdef USE_ZIGBEE_FORCE_NO_CHILDREN
     ZI_SEND(ZBS_SET_MAX_DEVICES)        ZI_WAIT_RECV(2500, ZBR_SET_OK)
+  #endif
     ZI_SEND(ZBS_SET_INDIRECT_TMO)       ZI_WAIT_RECV(2500, ZBR_SET_OK)
     ZI_SEND(ZBS_SET_TC_CACHE)           ZI_WAIT_RECV(2500, ZBR_SET_OK)
     ZI_SEND(ZBS_SET_ROUTE_TBL)          ZI_WAIT_RECV(2500, ZBR_SET_OK)
@@ -907,10 +919,10 @@ static const Zigbee_Instruction zb_prog[] PROGMEM = {
     ZI_MQTT_STATE(ZIGBEE_STATUS_OK, kStarted)
     ZI_LOG(LOG_LEVEL_INFO, kZigbeeStarted)
     ZI_CALL(&Z_State_Ready, 1)                    // Now accept incoming messages
-    ZI_CALL(&Z_Prepare_EEPROM, 0)
+    ZI_CALL(&Z_Prepare_Storage, 0)
     ZI_CALL(&Z_Load_Devices, 0)
-    ZI_CALL(&Z_Load_Data_EEPROM, 0)
-    ZI_CALL(&Z_Set_Save_Data_Timer_EEPROM, 0)
+    ZI_CALL(&Z_Load_Data, 0)
+    ZI_CALL(&Z_Set_Save_Data_Timer, 0)
     ZI_CALL(&Z_Query_Bulbs, 0)
 
   ZI_LABEL(ZIGBEE_LABEL_MAIN_LOOP)
@@ -947,14 +959,14 @@ void ZigbeeGotoLabel(uint8_t label) {
   uint8_t  cur_d8 = 0;
   uint8_t  cur_instr_len = 1;       // size of current instruction in words
 
-  for (uint32_t i = 0; i < ARRAY_SIZE(zb_prog); i += cur_instr_len) {
+  for (uint32_t i = 0; i < nitems(zb_prog); i += cur_instr_len) {
     const Zigbee_Instruction *cur_instr_line = &zb_prog[i];
     cur_instr = pgm_read_byte(&cur_instr_line->i.i);
     cur_d8    = pgm_read_byte(&cur_instr_line->i.d8);
-    //AddLog_P(LOG_LEVEL_DEBUG_MORE, PSTR("ZGB GOTO: pc %d instr %d"), i, cur_instr);
+    //AddLog(LOG_LEVEL_DEBUG_MORE, PSTR("ZGB GOTO: pc %d instr %d"), i, cur_instr);
 
     if (ZGB_INSTR_LABEL == cur_instr) {
-      //AddLog_P(LOG_LEVEL_DEBUG_MORE, PSTR(D_LOG_ZIGBEE "found label %d at pc %d"), cur_d8, i);
+      //AddLog(LOG_LEVEL_DEBUG_MORE, PSTR(D_LOG_ZIGBEE "found label %d at pc %d"), cur_d8, i);
       if (label == cur_d8) {
         // label found, goto to this pc
         zigbee.pc = i;
@@ -1006,7 +1018,7 @@ void ZigbeeStateMachine_Run(void) {
     zigbee.recv_until  = false;
     zigbee.state_no_timeout = false;   // reset the no_timeout for next instruction
 
-    if (zigbee.pc > ARRAY_SIZE(zb_prog)) {
+    if (zigbee.pc > nitems(zb_prog)) {
       AddLog(LOG_LEVEL_ERROR, PSTR(D_LOG_ZIGBEE "Invalid pc: %d, aborting"), zigbee.pc);
       zigbee.pc = -1;
     }
@@ -1078,7 +1090,7 @@ void ZigbeeStateMachine_Run(void) {
         }
         break;
       case ZGB_INSTR_LOG:
-        AddLog_P(cur_d8, (char*) cur_ptr1);
+        AddLog(cur_d8, (char*) cur_ptr1);
         break;
       case ZGB_INSTR_MQTT_STATE:
         {

@@ -17,22 +17,6 @@
   along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-/*********************************************************************************************\
- * Preferred IDE is Visual Studio Code with PlatformIO extension which doesn't need prerequisites
- *
- * Limited support for Arduino IDE needs Prerequisites:
- *    - Change libraries/PubSubClient/src/PubSubClient.h
- *       #define MQTT_MAX_PACKET_SIZE 1200
- *
- *  Arduino IDE 1.8.12 and up parameters for partly support
- *    - Select IDE Tools - Board: "Generic ESP8266 Module"
- *    - Select IDE Tools - Flash Mode: "DOUT (compatible)"
- *    - Select IDE Tools - Flash Size: "1M (FS:none OTA:~502KB)"
- *    - Select IDE Tools - LwIP Variant: "v2 Higher Bandwidth (no feature)"
- *    - Select IDE Tools - VTables: "Flash"
- *    - Select IDE Tools - Espressif FW: "nonos-sdk-2.2.1+100 (190703)"
-\*********************************************************************************************/
-
 // Location specific includes
 #ifndef ESP32_STAGE                         // ESP32 Stage has no core_version.h file. Disable include via PlatformIO Option
 #include <core_version.h>                   // Arduino_Esp8266 version information (ARDUINO_ESP8266_RELEASE and ARDUINO_ESP8266_RELEASE_2_7_1)
@@ -78,7 +62,7 @@
 #include <SPI.h>
 #ifdef USE_SDCARD
 #include <SD.h>
-#include <SDFAT.h>
+#include <SdFat.h>
 #endif  // USE_SDCARD
 #endif  // ESP8266
 #ifdef ESP32
@@ -98,6 +82,8 @@
  * Global variables
 \*********************************************************************************************/
 
+const uint32_t VERSION_MARKER[] PROGMEM = { 0x5AA55AA5, 0xFFFFFFFF, 0xA55AA55A };
+
 WiFiUDP PortUdp;                            // UDP Syslog and Alexa
 
 struct {
@@ -109,10 +95,14 @@ struct {
   uint32_t loop_load_avg;                   // Indicative loop load average
   uint32_t log_buffer_pointer;              // Index in log buffer
   uint32_t uptime;                          // Counting every second until 4294967295 = 130 year
+  uint32_t zc_time;                         // Zero-cross moment (microseconds)
+  uint32_t zc_offset;                       // Zero cross moment offset due to monitoring chip processing (microseconds)
+  uint32_t zc_code_offset;                  // Zero cross moment offset due to executing power code (microseconds)
+  uint32_t zc_interval;                     // Zero cross interval around 8333 (60Hz) or 10000 (50Hz) (microseconds)
   GpioOptionABits gpio_optiona;             // GPIO Option_A flags
   void *log_buffer_mutex;                   // Control access to log buffer
 
-  power_t power;                            // Current copy of Settings.power
+  power_t power;                            // Current copy of Settings->power
   power_t rel_inverted;                     // Relay inverted flag (1 = (0 = On, 1 = Off))
   power_t last_power;                       // Last power set state
   power_t blink_power;                      // Blink power state
@@ -136,11 +126,15 @@ struct {
 
   bool serial_local;                        // Handle serial locally
   bool fallback_topic_flag;                 // Use Topic or FallbackTopic
+  bool backlog_nodelay;                     // Execute all backlog commands with no delay
   bool backlog_mutex;                       // Command backlog pending
   bool stop_flash_rotate;                   // Allow flash configuration rotation
   bool blinkstate;                          // LED state
   bool pwm_present;                         // Any PWM channel configured with SetOption15 0
   bool i2c_enabled;                         // I2C configured
+#ifdef ESP32
+  bool i2c_enabled_2;                        // I2C configured, second controller on ESP32, Wire1
+#endif
   bool ntp_force_sync;                      // Force NTP sync
   bool skip_light_fade;                     // Temporarily skip light fading
   bool restart_halt;                        // Do not restart but stay in wait loop
@@ -160,7 +154,7 @@ struct {
   uint8_t state_250mS;                      // State 250msecond per second flag
   uint8_t latching_relay_pulse;             // Latching relay pulse timer
   uint8_t active_device;                    // Active device in ExecuteCommandPower
-  uint8_t sleep;                            // Current copy of Settings.sleep
+  uint8_t sleep;                            // Current copy of Settings->sleep
   uint8_t leds_present;                     // Max number of LED supported
   uint8_t led_inverted;                     // LED inverted flag (1 = (0 = On, 1 = Off))
   uint8_t led_power;                        // LED power state
@@ -172,18 +166,24 @@ struct {
   uint8_t serial_in_byte;                   // Received byte
   uint8_t devices_present;                  // Max number of devices supported
   uint8_t masterlog_level;                  // Master log level used to override set log level
-  uint8_t seriallog_level;                  // Current copy of Settings.seriallog_level
-  uint8_t syslog_level;                     // Current copy of Settings.syslog_level
+  uint8_t seriallog_level;                  // Current copy of Settings->seriallog_level
+  uint8_t syslog_level;                     // Current copy of Settings->syslog_level
   uint8_t templog_level;                    // Temporary log level to be used by HTTP cm and Telegram
-  uint8_t module_type;                      // Current copy of Settings.module or user template type
+  uint8_t module_type;                      // Current copy of Settings->module or user template type
   uint8_t last_source;                      // Last command source
   uint8_t shutters_present;                 // Number of actual define shutters
-//  uint8_t prepped_loglevel;                 // Delayed log level message
+  uint8_t discovery_counter;                // Delayed discovery counter
 
 #ifndef SUPPORT_IF_STATEMENT
   uint8_t backlog_index;                    // Command backlog index
   uint8_t backlog_pointer;                  // Command backlog pointer
   String backlog[MAX_BACKLOG];              // Command backlog buffer
+#endif
+
+#ifdef MQTT_DATA_STRING
+  String mqtt_data;                         // Buffer filled by Response functions
+#else
+  char mqtt_data[MESSZ];                    // MQTT publish buffer
 #endif
 
   char version[16];                         // Composed version string like 255.255.255.255
@@ -192,9 +192,19 @@ struct {
   char serial_in_buffer[INPUT_BUFFER_SIZE];  // Receive buffer
   char mqtt_client[99];                     // Composed MQTT Clientname
   char mqtt_topic[TOPSZ];                   // Composed MQTT topic
-  char mqtt_data[MESSZ];                    // MQTT publish buffer and web page ajax buffer
-  char log_buffer[LOG_BUFFER_SIZE];         // Web log buffer
+
+#ifdef ESP8266
+#ifdef PIO_FRAMEWORK_ARDUINO_MMU_CACHE16_IRAM48_SECHEAP_SHARED
+  char* log_buffer = nullptr;               // Log buffer in IRAM
+#else
+  char log_buffer[LOG_BUFFER_SIZE];         // Log buffer in DRAM
+#endif  // PIO_FRAMEWORK_ARDUINO_MMU_CACHE16_IRAM48_SECHEAP_SHARED
+#else   // Not ESP8266
+  char log_buffer[LOG_BUFFER_SIZE];         // Log buffer in DRAM
+#endif  // ESP8266
 } TasmotaGlobal;
+
+TSettings* Settings = nullptr;
 
 #ifdef SUPPORT_IF_STATEMENT
   #include <LinkedList.h>
@@ -252,6 +262,27 @@ void setup(void) {
 //  Serial.setRxBufferSize(INPUT_BUFFER_SIZE);  // Default is 256 chars
   TasmotaGlobal.seriallog_level = LOG_LEVEL_INFO;  // Allow specific serial messages until config loaded
 
+#ifdef ESP8266
+#ifdef PIO_FRAMEWORK_ARDUINO_MMU_CACHE16_IRAM48_SECHEAP_SHARED
+  ESP.setIramHeap();
+  Settings = (TSettings*)malloc(sizeof(TSettings));             // Allocate in "new" 16k heap space
+  TasmotaGlobal.log_buffer = (char*)malloc(LOG_BUFFER_SIZE);    // Allocate in "new" 16k heap space
+  ESP.resetHeap();
+  if (TasmotaGlobal.log_buffer == nullptr) {
+    TasmotaGlobal.log_buffer = (char*)malloc(LOG_BUFFER_SIZE);  // Allocate in "old" heap space as fallback
+  }
+  if (TasmotaGlobal.log_buffer != nullptr) {
+    TasmotaGlobal.log_buffer[0] = '\0';
+  }
+#endif  // PIO_FRAMEWORK_ARDUINO_MMU_CACHE16_IRAM48_SECHEAP_SHARED
+#endif  // ESP8266
+  if (Settings == nullptr) {
+    Settings = (TSettings*)malloc(sizeof(TSettings));
+  }
+
+//  AddLog(LOG_LEVEL_INFO, PSTR("ADR: Settings %p, Log %p"), Settings, TasmotaGlobal.log_buffer);
+  AddLog(LOG_LEVEL_INFO, PSTR("HDW: %s"), GetDeviceHardware().c_str());
+
 #ifdef USE_UFILESYS
   UfsInit();  // xdrv_50_filesystem.ino
 #endif
@@ -261,63 +292,76 @@ void setup(void) {
 
   OsWatchInit();
 
-  TasmotaGlobal.seriallog_level = Settings.seriallog_level;
-  TasmotaGlobal.syslog_level = Settings.syslog_level;
+  TasmotaGlobal.seriallog_level = Settings->seriallog_level;
+  TasmotaGlobal.syslog_level = Settings->syslog_level;
 
-  TasmotaGlobal.module_changed = (Settings.module != Settings.last_module);
+  TasmotaGlobal.module_changed = (Settings->module != Settings->last_module);
   if (TasmotaGlobal.module_changed) {
-    Settings.baudrate = APP_BAUDRATE / 300;
-    Settings.serial_config = TS_SERIAL_8N1;
+    Settings->baudrate = APP_BAUDRATE / 300;
+    Settings->serial_config = TS_SERIAL_8N1;
   }
-  SetSerialBaudrate(Settings.baudrate * 300);  // Reset serial interface if current baudrate is different from requested baudrate
+  SetSerialBaudrate(Settings->baudrate * 300);  // Reset serial interface if current baudrate is different from requested baudrate
 
   if (1 == RtcReboot.fast_reboot_count) {      // Allow setting override only when all is well
     UpdateQuickPowerCycle(true);
   }
 
-  TasmotaGlobal.stop_flash_rotate = Settings.flag.stop_flash_rotate;  // SetOption12 - Switch between dynamic or fixed slot flash save location
-  TasmotaGlobal.save_data_counter = Settings.save_data;
-  TasmotaGlobal.sleep = Settings.sleep;
+  if (ResetReason() != REASON_DEEP_SLEEP_AWAKE) {
+#ifdef ESP8266
+    Settings->flag4.network_wifi = 1;           // Make sure we're in control
+#endif
+#ifdef ESP32
+    if (!Settings->flag4.network_ethernet) {
+      Settings->flag4.network_wifi = 1;         // Make sure we're in control
+    }
+#endif
+  }
+
+  TasmotaGlobal.stop_flash_rotate = Settings->flag.stop_flash_rotate;  // SetOption12 - Switch between dynamic or fixed slot flash save location
+  TasmotaGlobal.save_data_counter = Settings->save_data;
+  TasmotaGlobal.sleep = Settings->sleep;
 #ifndef USE_EMULATION
-  Settings.flag2.emulation = 0;
+  Settings->flag2.emulation = 0;
 #else
 #ifndef USE_EMULATION_WEMO
-  if (EMUL_WEMO == Settings.flag2.emulation) { Settings.flag2.emulation = 0; }
+  if (EMUL_WEMO == Settings->flag2.emulation) { Settings->flag2.emulation = 0; }
 #endif
 #ifndef USE_EMULATION_HUE
-  if (EMUL_HUE == Settings.flag2.emulation) { Settings.flag2.emulation = 0; }
+  if (EMUL_HUE == Settings->flag2.emulation) { Settings->flag2.emulation = 0; }
 #endif
 #endif  // USE_EMULATION
 
 //  AddLogBuffer(LOG_LEVEL_DEBUG, (uint8_t*)&TasmotaGlobal, sizeof(TasmotaGlobal));
 
-  if (Settings.param[P_BOOT_LOOP_OFFSET]) {         // SetOption36
+  if (Settings->param[P_BOOT_LOOP_OFFSET]) {         // SetOption36
     // Disable functionality as possible cause of fast restart within BOOT_LOOP_TIME seconds (Exception, WDT or restarts)
-    if (RtcReboot.fast_reboot_count > Settings.param[P_BOOT_LOOP_OFFSET]) {       // Restart twice
-      Settings.flag3.user_esp8285_enable = 0;       // SetOption51 - Enable ESP8285 user GPIO's - Disable ESP8285 Generic GPIOs interfering with flash SPI
-      if (RtcReboot.fast_reboot_count > Settings.param[P_BOOT_LOOP_OFFSET] +1) {  // Restart 3 times
+    if (RtcReboot.fast_reboot_count > Settings->param[P_BOOT_LOOP_OFFSET]) {       // Restart twice
+      Settings->flag3.user_esp8285_enable = 0;       // SetOption51 - Enable ESP8285 user GPIO's - Disable ESP8285 Generic GPIOs interfering with flash SPI
+      if (RtcReboot.fast_reboot_count > Settings->param[P_BOOT_LOOP_OFFSET] +1) {  // Restart 3 times
         for (uint32_t i = 0; i < MAX_RULE_SETS; i++) {
-          if (bitRead(Settings.rule_stop, i)) {
-            bitWrite(Settings.rule_enabled, i, 0);  // Disable rules causing boot loop
+          if (bitRead(Settings->rule_stop, i)) {
+            bitWrite(Settings->rule_enabled, i, 0);  // Disable rules causing boot loop
           }
         }
       }
-      if (RtcReboot.fast_reboot_count > Settings.param[P_BOOT_LOOP_OFFSET] +2) {  // Restarted 4 times
-        Settings.rule_enabled = 0;                  // Disable all rules
+      if (RtcReboot.fast_reboot_count > Settings->param[P_BOOT_LOOP_OFFSET] +2) {  // Restarted 4 times
+        Settings->rule_enabled = 0;                  // Disable all rules
         TasmotaGlobal.no_autoexec = true;
       }
-      if (RtcReboot.fast_reboot_count > Settings.param[P_BOOT_LOOP_OFFSET] +3) {  // Restarted 5 times
-        for (uint32_t i = 0; i < ARRAY_SIZE(Settings.my_gp.io); i++) {
-          Settings.my_gp.io[i] = GPIO_NONE;         // Reset user defined GPIO disabling sensors
+      if (RtcReboot.fast_reboot_count > Settings->param[P_BOOT_LOOP_OFFSET] +3) {  // Restarted 5 times
+        for (uint32_t i = 0; i < nitems(Settings->my_gp.io); i++) {
+          Settings->my_gp.io[i] = GPIO_NONE;         // Reset user defined GPIO disabling sensors
         }
       }
-      if (RtcReboot.fast_reboot_count > Settings.param[P_BOOT_LOOP_OFFSET] +4) {  // Restarted 6 times
-        Settings.module = Settings.fallback_module;  // Reset module to fallback module
-//        Settings.last_module = Settings.fallback_module;
+      if (RtcReboot.fast_reboot_count > Settings->param[P_BOOT_LOOP_OFFSET] +4) {  // Restarted 6 times
+        Settings->module = Settings->fallback_module;  // Reset module to fallback module
+//        Settings->last_module = Settings->fallback_module;
       }
       AddLog(LOG_LEVEL_INFO, PSTR("FRC: " D_LOG_SOME_SETTINGS_RESET " (%d)"), RtcReboot.fast_reboot_count);
     }
   }
+
+  memcpy_P(TasmotaGlobal.version, VERSION_MARKER, 1);  // Dummy for compiler saving VERSION_MARKER
 
   snprintf_P(TasmotaGlobal.version, sizeof(TasmotaGlobal.version), PSTR("%d.%d.%d"), VERSION >> 24 & 0xff, VERSION >> 16 & 0xff, VERSION >> 8 & 0xff);  // Release version 6.3.0
   if (VERSION & 0xff) {  // Development or patched version 6.3.0.10
@@ -335,19 +379,28 @@ void setup(void) {
     snprintf_P(TasmotaGlobal.hostname, sizeof(TasmotaGlobal.hostname)-1, SettingsText(SET_HOSTNAME));
   }
 
+  RtcInit();
   GpioInit();
+  ButtonInit();
+  SwitchInit();
+#ifdef ROTARY_V1
+  RotaryInit();
+#endif  // ROTARY_V1
+#ifdef USE_BERRY
+  BerryInit();
+#endif // USE_BERRY
 
-  WifiConnect();
+  XdrvCall(FUNC_PRE_INIT);
+  XsnsCall(FUNC_PRE_INIT);
 
   SetPowerOnState();
+  WifiConnect();
 
   AddLog(LOG_LEVEL_INFO, PSTR(D_PROJECT " %s %s " D_VERSION " %s%s-" ARDUINO_CORE_RELEASE "(%s)"),
     PSTR(PROJECT), SettingsText(SET_DEVICENAME), TasmotaGlobal.version, TasmotaGlobal.image_name, GetBuildDateAndTime().c_str());
 #ifdef FIRMWARE_MINIMAL
   AddLog(LOG_LEVEL_INFO, PSTR(D_WARNING_MINIMAL_VERSION));
 #endif  // FIRMWARE_MINIMAL
-
-  RtcInit();
 
 #ifdef USE_ARDUINO_OTA
   ArduinoOTAInit();
@@ -356,7 +409,7 @@ void setup(void) {
   XdrvCall(FUNC_INIT);
   XsnsCall(FUNC_INIT);
 #ifdef USE_SCRIPT
-  if (bitRead(Settings.rule_enabled, 0)) Run_Scripter(">BS",3,0);
+  if (bitRead(Settings->rule_enabled, 0)) Run_Scripter(">BS",3,0);
 #endif
 
   TasmotaGlobal.rules_flag.system_init = 1;
@@ -384,16 +437,19 @@ void BacklogLoop(void) {
       if (!nodelay_detected) {
         ExecuteCommand((char*)cmd.c_str(), SRC_BACKLOG);
       }
-      if (nodelay) {
+      if (nodelay || TasmotaGlobal.backlog_nodelay) {
         TasmotaGlobal.backlog_timer = millis();  // Reset backlog_timer which has been set by ExecuteCommand (CommandHandler)
       }
       TasmotaGlobal.backlog_mutex = false;
+    }
+    if (BACKLOG_EMPTY) {
+      TasmotaGlobal.backlog_nodelay = false;
     }
   }
 }
 
 void SleepDelay(uint32_t mseconds) {
-  if (mseconds) {
+  if (!TasmotaGlobal.backlog_nodelay && mseconds) {
     uint32_t wait = millis() + mseconds;
     while (!TimeReached(wait) && !Serial.available()) {  // We need to service serial buffer ASAP as otherwise we get uart buffer overrun
       delay(1);
@@ -475,7 +531,7 @@ void loop(void) {
 
   uint32_t my_activity = millis() - my_sleep;
 
-  if (Settings.flag3.sleep_normal) {               // SetOption60 - Enable normal sleep instead of dynamic sleep
+  if (Settings->flag3.sleep_normal) {               // SetOption60 - Enable normal sleep instead of dynamic sleep
     //  yield();                                   // yield == delay(0), delay contains yield, auto yield in loop
     SleepDelay(TasmotaGlobal.sleep);               // https://github.com/esp8266/Arduino/issues/2021
   } else {

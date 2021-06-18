@@ -291,7 +291,7 @@ void AdcEvery250ms(void) {
         Adc[idx].last_value = new_value;
         uint16_t value = Adc[idx].last_value / ANALOG_PERCENT;
         Response_P(PSTR("{\"ANALOG\":{\"A%ddiv10\":%d}}"), idx + offset, (value > 99) ? 100 : value);
-        XdrvRulesProcess();
+        XdrvRulesProcess(0);
       }
     }
     else if (ADC_JOY == Adc[idx].type) {
@@ -300,7 +300,7 @@ void AdcEvery250ms(void) {
         Adc[idx].last_value = new_value;
         uint16_t value = new_value / Adc[idx].param1;
         Response_P(PSTR("{\"ANALOG\":{\"Joy%s\":%d}}"), adc_idx, value);
-        XdrvRulesProcess();
+        XdrvRulesProcess(0);
       } else {
         Adc[idx].last_value = 0;
       }
@@ -356,13 +356,13 @@ float AdcGetPh(uint32_t idx) {
   return ph;
 }
 
-uint16_t AdcGetRange(uint32_t idx) {
+float AdcGetRange(uint32_t idx) {
   // formula for calibration: value, fromLow, fromHigh, toLow, toHigh
   // Example: 514, 632, 236, 0, 100
   // int( ((<param2> - <analog-value>) / (<param2> - <param1>) ) * (<param3> - <param4>) ) + <param4> )
   int adc = AdcRead(Adc[idx].pin, 2);
   double adcrange = ( ((double)Adc[idx].param2 - (double)adc) / ( ((double)Adc[idx].param2 - (double)Adc[idx].param1)) * ((double)Adc[idx].param3 - (double)Adc[idx].param4) + (double)Adc[idx].param4 );
-  return (uint16_t)adcrange;
+  return (float)adcrange;
 }
 
 void AdcGetCurrentPower(uint8_t idx, uint8_t factor) {
@@ -461,7 +461,7 @@ void AdcShow(bool json) {
       case ADC_TEMP: {
         if (json) {
           AdcShowContinuation(&jsonflg);
-          ResponseAppend_P(PSTR("\"" D_JSON_TEMPERATURE "%s\":%*_f"), adc_idx, Settings.flag2.temperature_resolution, &Adc[idx].temperature);
+          ResponseAppend_P(PSTR("\"" D_JSON_TEMPERATURE "%s\":%*_f"), adc_idx, Settings->flag2.temperature_resolution, &Adc[idx].temperature);
           if ((0 == TasmotaGlobal.tele_period) && (!domo_flag[ADC_TEMP])) {
 #ifdef USE_DOMOTICZ
             DomoticzFloatSensor(DZ_TEMP, Adc[idx].temperature);
@@ -498,14 +498,16 @@ void AdcShow(bool json) {
         break;
       }
       case ADC_RANGE: {
-        uint16_t adc_range = AdcGetRange(idx);
+        float adc_range = AdcGetRange(idx);
+        char range_chr[FLOATSZ];
+        dtostrfd(adc_range, Settings->flag2.frequency_resolution, range_chr);
 
         if (json) {
           AdcShowContinuation(&jsonflg);
-          ResponseAppend_P(PSTR("\"" D_JSON_RANGE "%s\":%d"), adc_idx, adc_range);
+          ResponseAppend_P(PSTR("\"" D_JSON_RANGE "%s\":%s"), adc_idx, range_chr);
 #ifdef USE_WEBSERVER
         } else {
-          WSContentSend_PD(HTTP_SNS_RANGE, adc_name, adc_range);
+          WSContentSend_PD(HTTP_SNS_RANGE_CHR, adc_name, range_chr);
 #endif  // USE_WEBSERVER
         }
         break;
@@ -515,13 +517,13 @@ void AdcShow(bool json) {
 
         float voltage = (float)(Adc[idx].param3) / 10;
         char voltage_chr[FLOATSZ];
-        dtostrfd(voltage, Settings.flag2.voltage_resolution, voltage_chr);
+        dtostrfd(voltage, Settings->flag2.voltage_resolution, voltage_chr);
         char current_chr[FLOATSZ];
-        dtostrfd(Adc[idx].current, Settings.flag2.current_resolution, current_chr);
+        dtostrfd(Adc[idx].current, Settings->flag2.current_resolution, current_chr);
         char power_chr[FLOATSZ];
-        dtostrfd(voltage * Adc[idx].current, Settings.flag2.wattage_resolution, power_chr);
+        dtostrfd(voltage * Adc[idx].current, Settings->flag2.wattage_resolution, power_chr);
         char energy_chr[FLOATSZ];
-        dtostrfd(Adc[idx].energy, Settings.flag2.energy_resolution, energy_chr);
+        dtostrfd(Adc[idx].energy, Settings->flag2.energy_resolution, energy_chr);
 
         if (json) {
           AdcShowContinuation(&jsonflg);

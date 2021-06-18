@@ -28,7 +28,7 @@
  * Use online command StateText to translate ON, OFF, HOLD and TOGGLE.
  * Use online command Prefix to translate cmnd, stat and tele.
  *
- * Updated until v8.1.0.10
+ * Updated until v9.3.1.1
 \*********************************************************************/
 
 //#define LANGUAGE_MODULE_NAME         // Enable to display "Module Generic" (ie Spanish), Disable to display "Generic Module" (ie English)
@@ -109,6 +109,7 @@
 #define D_GATEWAY "Gateway"
 #define D_GROUP "Grup"
 #define D_HOST "Gazdă"
+#define D_HALL_EFFECT "Hall Effect"
 #define D_HOSTNAME "Hostname"
 #define D_HUMIDITY "Umiditate"
 #define D_ILLUMINANCE "Iluminare"
@@ -255,6 +256,7 @@
 #define D_CONFIGURATION "Configurație"
 #define D_INFORMATION "Informație"
 #define D_FIRMWARE_UPGRADE "Actualizare Firmware"
+#define D_MANAGEMENT "Consoles"
 #define D_CONSOLE "Consolă"
 #define D_CONFIRM_RESTART "Confirmare Restart"
 
@@ -289,10 +291,19 @@
 #define D_WEP "WEP"
 #define D_WPA_PSK "WPA PSK"
 #define D_WPA2_PSK "WPA2 PSK"
-#define D_AP1_SSID "AP1 SSId"
-#define D_AP1_PASSWORD "Parolă AP1"
-#define D_AP2_SSID "AP2 SSId"
-#define D_AP2_PASSWORD "Parolă AP2"
+#define D_AP1_SSID "WiFi Network"
+#define D_AP1_SSID_HELP "Type or Select your WiFi Network"
+#define D_AP2_SSID "WiFi Network 2"
+#define D_AP2_SSID_HELP "Type your Alternative WiFi Network"
+#define D_AP_PASSWORD "Parolă WiFi"
+#define D_AP_PASSWORD_HELP "Enter your WiFi Password"
+#define D_SELECT_YOUR_WIFI_NETWORK "Select your WiFi Network"
+#define D_SHOW_MORE_WIFI_NETWORKS "Scan for all WiFi Networks"
+#define D_SHOW_MORE_OPTIONS "More Options"
+#define D_CHECK_CREDENTIALS "Please, check your credentials"
+#define D_SUCCESSFUL_WIFI_CONNECTION "Successful WiFi Connection"
+#define D_NOW_YOU_CAN_CLOSE_THIS_WINDOW "Now you can close this window"
+#define D_REDIRECTING_TO_NEW_IP "Redirecting to new device's IP address"
 
 #define D_MQTT_PARAMETERS "parametri MQTT"
 #define D_CLIENT "Client"
@@ -567,6 +578,8 @@
 
 // xsns_53_sml.ino
 #define D_TPWRIN "Energy Total-In"
+#define D_TPWRIN0 "Energy Total-In T0"
+#define D_TPWRIN1 "Energy Total-In T1"
 #define D_TPWROUT "Energy Total-Out"
 #define D_TPWRCURR "Active Power-In/Out"
 #define D_TPWRCURR1 "Active Power-In p1"
@@ -585,6 +598,10 @@
 #define D_StL1L2L3 "Current L1+L2+L3"
 #define D_SpL1L2L3 "Voltage L1+L2+L3/3"
 
+// xsns_86_tfminiplus.ino
+#define D_SIGNALSTRENGTH "Signal Strength"
+#define D_CHIPTEMPERATURE "Chip Temperature"
+
 // tasmota_template.h - keep them as short as possible to be able to fit them in GUI drop down box
 #define D_SENSOR_NONE          "Fără"
 #define D_SENSOR_USER          "Utilizator"
@@ -595,6 +612,12 @@
 #define D_SENSOR_DS18X20       "DS18x20"
 #define D_SENSOR_I2C_SCL       "I2C SCL"
 #define D_SENSOR_I2C_SDA       "I2C SDA"
+#define D_SENSOR_I2S_OUT_DATA  "I2S Out Data"
+#define D_SENSOR_I2S_OUT_CLK   "I2S Out Clk"
+#define D_SENSOR_I2S_OUT_SLCT  "I2S Out Slct"
+#define D_SENSOR_I2S_IN_DATA   "I2S In Data"
+#define D_SENSOR_I2S_IN_CLK    "I2S In Clk"
+#define D_SENSOR_I2S_IN_SLCT   "I2S In Slct"
 #define D_SENSOR_WS2812        "WS2812"
 #define D_SENSOR_DFR562        "MP3 Player"
 #define D_SENSOR_IRSEND        "IRsend"
@@ -605,6 +628,8 @@
 #define D_SENSOR_LED_LINK      "LedLink"    // Suffix "i"
 #define D_SENSOR_PWM           "PWM"        // Suffix "1"
 #define D_SENSOR_COUNTER       "Contor"    // Suffix "1"
+#define D_SENSOR_INTERRUPT     "Interrupt"
+#define D_SENSOR_INPUT         "Input"
 #define D_SENSOR_IRRECV        "IRrecv"
 #define D_SENSOR_MHZ_RX        "MHZ Rx"
 #define D_SENSOR_MHZ_TX        "MHZ Tx"
@@ -643,6 +668,9 @@
 #define D_SENSOR_TM1638_CLK    "TM1638 CLK"
 #define D_SENSOR_TM1638_DIO    "TM1638 DIO"
 #define D_SENSOR_TM1638_STB    "TM1638 STB"
+#define D_SENSOR_MAX7219_DIN    "MAX7219 DIN"
+#define D_SENSOR_MAX7219_CS    "MAX7219 CS"
+#define D_SENSOR_MAX7219_CLK    "MAX7219 CLK"
 #define D_SENSOR_HX711_SCK     "HX711 SCK"
 #define D_SENSOR_HX711_DAT     "HX711 DAT"
 #define D_SENSOR_FTC532        "FTC532"
@@ -674,6 +702,8 @@
 #define D_SENSOR_MCP39F5_TX    "MCP39F5 Tx"
 #define D_SENSOR_MCP39F5_RX    "MCP39F5 Rx"
 #define D_SENSOR_MCP39F5_RST   "MCP39F5 Rst"
+#define D_SENSOR_CSE7761_TX    "CSE7761 Tx"
+#define D_SENSOR_CSE7761_RX    "CSE7761 Rx"
 #define D_SENSOR_CSE7766_TX    "CSE7766 Tx"
 #define D_SENSOR_CSE7766_RX    "CSE7766 Rx"
 #define D_SENSOR_PN532_TX      "PN532 Tx"
@@ -694,7 +724,7 @@
 #define D_SENSOR_HRE_DATA      "HRE Data"
 #define D_SENSOR_ADE7953_IRQ   "ADE7953 IRQ"
 #define D_SENSOR_BUZZER        "Buzzer"
-#define D_SENSOR_OLED_RESET    "OLED Reset"
+#define D_SENSOR_DISP_RESET    "Display Rst"
 #define D_SENSOR_ZIGBEE_TXD    "Zigbee Tx"
 #define D_SENSOR_ZIGBEE_RXD    "Zigbee Rx"
 #define D_SENSOR_ZIGBEE_RST    "Zigbee Rst"
@@ -769,18 +799,22 @@
 #define D_SENSOR_IEM3000_RX    "iEM3000 RX"
 #define D_SENSOR_MIEL_HVAC_TX  "MiEl HVAC Tx"
 #define D_SENSOR_MIEL_HVAC_RX  "MiEl HVAC Rx"
+#define D_SENSOR_PROJECTOR_CTRL_TX  "DLP Tx"
+#define D_SENSOR_PROJECTOR_CTRL_RX  "DLP Rx"
 #define D_SENSOR_SHELLY_DIMMER_BOOT0 "SHD Boot 0"
 #define D_SENSOR_SHELLY_DIMMER_RST_INV "SHD Reset"
 #define D_SENSOR_RC522_RST     "RC522 Rst"
 #define D_SENSOR_RC522_CS      "RC522 CS"
 #define D_SENSOR_NRF24_CS      "NRF24 CS"
 #define D_SENSOR_NRF24_DC      "NRF24 DC"
+#define D_SENSOR_XPT2046_CS    "XPT2046 CS"
 #define D_SENSOR_ILI9341_CS    "ILI9341 CS"
 #define D_SENSOR_ILI9341_DC    "ILI9341 DC"
 #define D_SENSOR_ILI9488_CS    "ILI9488 CS"
 #define D_SENSOR_EPAPER29_CS   "EPaper29 CS"
 #define D_SENSOR_EPAPER42_CS   "EPaper42 CS"
 #define D_SENSOR_SSD1351_CS    "SSD1351 CS"
+#define D_SENSOR_SSD1351_DC    "SSD1351 DC"
 #define D_SENSOR_RA8876_CS     "RA8876 CS"
 #define D_SENSOR_ST7789_CS     "ST7789 CS"
 #define D_SENSOR_ST7789_DC     "ST7789 DC"
@@ -791,7 +825,12 @@
 #define D_SENSOR_WIEGAND_D1    "Wiegand D1"
 #define D_SENSOR_NEOPOOL_TX    "NeoPool Tx"
 #define D_SENSOR_NEOPOOL_RX    "NeoPool Rx"
-
+#define D_SENSOR_VL53L0X_XSHUT "VL53L0X XSHUT"
+#define D_SENSOR_TFMINIPLUS_TX  "TFmini+ TX"
+#define D_SENSOR_TFMINIPLUS_RX  "TFmini+ RX"
+#define D_SENSOR_ZEROCROSS     "ZC Pulse"
+#define D_SENSOR_HALLEFFECT    "HallEffect"
+#define D_SENSOR_EPD_DATA      "EPD Data"
 
 // Units
 #define D_UNIT_AMPERE "A"
@@ -838,6 +877,10 @@
 #define D_UNIT_WATT "W"
 #define D_UNIT_WATTHOUR "Wh"
 #define D_UNIT_WATT_METER_QUADRAT "W/m²"
+
+#define D_NEW_ADDRESS          "Setting address to"
+#define D_OUT_OF_RANGE         "Out of Range"
+#define D_SENSOR_DETECTED      "detected"
 
 //SDM220, SDM120, SDM72, LE01MR
 #define D_EXPORT_POWER    "Export Power"
@@ -893,6 +936,10 @@
 #define D_MANAGE_FILE_SYSTEM   "Manage File system"
 #define D_FS_SIZE              "Size"
 #define D_FS_FREE              "Free"
+#define D_NEW_FILE             "newfile.txt"
+#define D_CREATE_NEW_FILE      "Create and edit new file"
+#define D_EDIT_FILE            "Edit File"
+#define D_CONFIRM_FILE_DEL     "Confirm file deletion"
 
 //xsns_67_as3935.ino
 #define D_AS3935_GAIN "gain:"
@@ -1009,8 +1056,12 @@
 #define D_NEOPOOL_PR_OFF                  "PrOff"
 #define D_NEOPOOL_SETPOINT_OK             "Ok"
 #define D_NEOPOOL_COVER                   "Cover"
-#define D_NEOPOOL_SHOCK                   "Shock"
-#define D_NEOPOOL_ALARM                   "! "
+#define D_NEOPOOL_SHOCK                   "Boost"
+#define D_NEOPOOL_STATUS_ON               "ON"
+#define D_NEOPOOL_STATUS_OFF              "OFF"
+#define D_NEOPOOL_STATUS_WAIT             "WAIT"
+#define D_NEOPOOL_STATUS_TANK             "TANK"
+#define D_NEOPOOL_STATUS_FLOW             "Flow"
 #define D_NEOPOOL_LOW                     "Low"
 #define D_NEOPOOL_FLOW1                   "FL1"
 #define D_NEOPOOL_FLOW2                   "FL2"

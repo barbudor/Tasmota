@@ -62,15 +62,15 @@ void TCPLoop(void)
   if ((server_tcp) && (server_tcp->hasClient())) {
     // find an empty slot
     uint32_t i;
-    for (i=0; i<ARRAY_SIZE(client_tcp); i++) {
+    for (i=0; i<nitems(client_tcp); i++) {
       WiFiClient &client = client_tcp[i];
       if (!client) {
         client = server_tcp->available();
         break;
       }
     }
-    if (i >= ARRAY_SIZE(client_tcp)) {
-      i = client_next++ % ARRAY_SIZE(client_tcp);
+    if (i >= nitems(client_tcp)) {
+      i = client_next++ % nitems(client_tcp);
       WiFiClient &client = client_tcp[i];
       client.stop();
       client = server_tcp->available();
@@ -90,16 +90,16 @@ void TCPLoop(void)
       }
     }
     if (buf_len > 0) {
-      AddLog_P(LOG_LEVEL_DEBUG, PSTR(D_LOG_TCP "from MCU: %*_H"), buf_len, tcp_buf);
+      AddLog(LOG_LEVEL_DEBUG, PSTR(D_LOG_TCP "from MCU: %*_H"), buf_len, tcp_buf);
 
-      for (uint32_t i=0; i<ARRAY_SIZE(client_tcp); i++) {
+      for (uint32_t i=0; i<nitems(client_tcp); i++) {
         WiFiClient &client = client_tcp[i];
         if (client) { client.write(tcp_buf, buf_len); }
       }
     }
 
     // handle data received from TCP
-    for (uint32_t i=0; i<ARRAY_SIZE(client_tcp); i++) {
+    for (uint32_t i=0; i<nitems(client_tcp); i++) {
       WiFiClient &client = client_tcp[i];
       buf_len = 0;
       while (client && (buf_len < TCP_BRIDGE_BUF_SIZE) && (client.available())) {
@@ -110,7 +110,7 @@ void TCPLoop(void)
         }
       }
       if (buf_len > 0) {
-        AddLog_P(LOG_LEVEL_DEBUG, PSTR(D_LOG_TCP "to MCU/%d: %*_H"), i+1, buf_len, tcp_buf);
+        AddLog(LOG_LEVEL_DEBUG, PSTR(D_LOG_TCP "to MCU/%d: %*_H"), i+1, buf_len, tcp_buf);
         TCPSerial->write(tcp_buf, buf_len);
       }
     }
@@ -125,9 +125,9 @@ void TCPInit(void) {
     tcp_buf = (uint8_t*) malloc(TCP_BRIDGE_BUF_SIZE);
     if (!tcp_buf) { AddLog(LOG_LEVEL_ERROR, PSTR(D_LOG_TCP "could not allocate buffer")); return; }
 
-    if (!Settings.tcp_baudrate)  { Settings.tcp_baudrate = 115200 / 1200; }
+    if (!Settings->tcp_baudrate)  { Settings->tcp_baudrate = 115200 / 1200; }
     TCPSerial = new TasmotaSerial(Pin(GPIO_TCP_RX), Pin(GPIO_TCP_TX), TasmotaGlobal.seriallog_level ? 1 : 2, 0, TCP_BRIDGE_BUF_SIZE);   // set a receive buffer of 256 bytes
-    TCPSerial->begin(Settings.tcp_baudrate * 1200);
+    TCPSerial->begin(Settings->tcp_baudrate * 1200);
     if (TCPSerial->hardwareSerial()) {
       ClaimSerial();
 		}
@@ -152,7 +152,7 @@ void CmndTCPStart(void) {
     delete server_tcp;
     server_tcp = nullptr;
 
-    for (uint32_t i=0; i<ARRAY_SIZE(client_tcp); i++) {
+    for (uint32_t i=0; i<nitems(client_tcp); i++) {
       WiFiClient &client = client_tcp[i];
       client.stop();
     }
@@ -170,10 +170,10 @@ void CmndTCPStart(void) {
 void CmndTCPBaudrate(void) {
   if ((XdrvMailbox.payload >= 1200) && (XdrvMailbox.payload <= 115200)) {
     XdrvMailbox.payload /= 1200;  // Make it a valid baudrate
-    Settings.tcp_baudrate = XdrvMailbox.payload;
-    TCPSerial->begin(Settings.tcp_baudrate * 1200);  // Reinitialize serial port with new baud rate
+    Settings->tcp_baudrate = XdrvMailbox.payload;
+    TCPSerial->begin(Settings->tcp_baudrate * 1200);  // Reinitialize serial port with new baud rate
   }
-  ResponseCmndNumber(Settings.tcp_baudrate * 1200);
+  ResponseCmndNumber(Settings->tcp_baudrate * 1200);
 }
 
 /*********************************************************************************************\

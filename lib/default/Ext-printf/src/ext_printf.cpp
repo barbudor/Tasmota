@@ -126,18 +126,19 @@ void * __va_cur_ptr4(va_list &va) {
 // >>> Reading a_ptr=0x3FFFFD70 *a_ptr=6
 // >>> Reading a_ptr=0x3FFFFD74 *a_ptr=7
 // >>> Reading a_ptr=0x3FFFFD78 *a_ptr=8
-#elif defined(__RISC_V__)
+
+#elif defined(__riscv)
 // #define __va_argsiz_tas(t)  	(((sizeof(t) + sizeof(int) - 1) / sizeof(int)) * sizeof(int))
 #define va_cur_ptr4(va,T) ( (T*) __va_cur_ptr4(va) )
 void * __va_cur_ptr4(va_list &va) {
   uintptr_t * va_ptr = (uintptr_t*) &va;
-  void * cur_ptr = (void*) *va_ptr;
-  *va_ptr += 4;
-  return cur_ptr;
+  int32_t * cur_ptr = (int32_t*) *va_ptr;
+  return (void*) (cur_ptr - 1);
 }
-#else   // __XTENSA__, __RISCV__
+
+#else   // __XTENSA__, __riscv
   #error "ext_printf is not suppoerted on this platform"
-#endif  // __XTENSA__, __RISCV__
+#endif  // __XTENSA__, __riscv
 
 /*********************************************************************************************\
  * Genral function to convert u64 to hex
@@ -201,6 +202,8 @@ char* ToHex_P(const unsigned char * in, size_t insz, char * out, size_t outsz, c
 /*********************************************************************************************\
  * snprintf extended
  *
+ * New: if the provided buffer is nullptr, a buffer is allocated on the heap (malloc)
+ * and returned as a pointer instead of the length of the output (needs casting)
 \*********************************************************************************************/
 
 // get a fresh malloc allocated string based on the current pointer (can be in PROGMEM)
@@ -212,7 +215,10 @@ char * copyStr(const char * str) {
   return cpy;
 }
 
-int32_t ext_vsnprintf_P(char * buf, size_t buf_len, const char * fmt_P, va_list va) {
+const char ext_invalid_mem[] PROGMEM = "<--INVALID-->";
+const uint32_t min_valid_ptr = 0x3F000000;    // addresses below this line are invalid
+
+int32_t ext_vsnprintf_P(char * out_buf, size_t buf_len, const char * fmt_P, va_list va) {
   va_list va_cpy;
   va_copy(va_cpy, va);
 
@@ -222,7 +228,7 @@ int32_t ext_vsnprintf_P(char * buf, size_t buf_len, const char * fmt_P, va_list 
   char * fmt = fmt_cpy;
 
   const uint32_t ALLOC_SIZE = 12;
-  static char * allocs[ALLOC_SIZE] = {};     // initialized to zeroes
+  static const char * allocs[ALLOC_SIZE] = {};     // initialized to zeroes
   uint32_t alloc_idx = 0;
   static char hex[20];        // buffer used for 64 bits, favor RAM instead of stack to remove pressure
 
@@ -238,7 +244,6 @@ int32_t ext_vsnprintf_P(char * buf, size_t buf_len, const char * fmt_P, va_list 
 			if (*fmt == '*') {
 				decimals = va_arg(va, int32_t);   // skip width argument as int
         decimals_ptr = va_cur_ptr4(va, int32_t);    // pointer to value on stack
-        const char ** cur_val_ptr = va_cur_ptr4(va, const char*);    // pointer to value on stack
         fmt++;
         // Serial.printf("> decimals=%d, decimals_ptr=0x%08X\n", decimals, decimals_ptr);
 			}
@@ -264,12 +269,13 @@ int32_t ext_vsnprintf_P(char * buf, size_t buf_len, const char * fmt_P, va_list 
         fmt++;
         uint32_t cur_val = va_arg(va, uint32_t);              // current value
         const char ** cur_val_ptr = va_cur_ptr4(va, const char*);    // pointer to value on stack
-        char * new_val_str = (char*) "";
+        const char * new_val_str = "";
         switch (*fmt) {
           case 'H':     // Hex, decimals indicates the length, default 2
             {
               if (decimals < 0) { decimals = 0; }
-              if (decimals > 0) {
+              if (cur_val < min_valid_ptr) { new_val_str = ext_invalid_mem; }
+              else if (decimals > 0) {
                 char * hex_char = (char*) malloc(decimals*2 + 2);
                 ToHex_P((const uint8_t *)cur_val, decimals, hex_char, decimals*2 + 2);
                 new_val_str = hex_char;
@@ -280,13 +286,16 @@ int32_t ext_vsnprintf_P(char * buf, size_t buf_len, const char * fmt_P, va_list 
             break;
           case 'B':     // Pointer to SBuffer
             {
-              const SBuffer & buf = *(const SBuffer*)cur_val;
-              size_t buf_len = (&buf != nullptr) ? buf.len() : 0;
-              if (buf_len) {
-                char * hex_char = (char*) malloc(buf_len*2 + 2);
-                ToHex_P(buf.getBuffer(), buf_len, hex_char, buf_len*2 + 2);
-                new_val_str = hex_char;
-                allocs[alloc_idx++] = new_val_str;
+              if (cur_val < min_valid_ptr) { new_val_str = ext_invalid_mem; }
+              else {
+                const SBuffer & buf = *(const SBuffer*)cur_val;
+                size_t buf_len = (&buf != nullptr) ? buf.len() : 0;
+                if (buf_len) {
+                  char * hex_char = (char*) malloc(buf_len*2 + 2);
+                  ToHex_P(buf.getBuffer(), buf_len, hex_char, buf_len*2 + 2);
+                  new_val_str = hex_char;
+                  allocs[alloc_idx++] = new_val_str;
+                }
               }
             }
             break;
@@ -315,40 +324,46 @@ int32_t ext_vsnprintf_P(char * buf, size_t buf_len, const char * fmt_P, va_list 
           // Note: float MUST be passed by address, because C alsays promoted float to double when in vararg
           case 'f':     // input is `float`, printed to float with 2 decimals
             {
-              bool truncate = false;
-              if (decimals < 0) {
-                decimals = -decimals;
-                truncate = true;
-              }
-              float number = *(float*)cur_val;
-              if (isnan(number) || isinf(number)) {
-                new_val_str = (char*) "null";
-              } else {
-                dtostrf(*(float*)cur_val, (decimals + 2), decimals, hex);
-
-                if (truncate) {
-                  uint32_t last = strlen(hex) - 1;
-                  // remove trailing zeros
-                  while (hex[last] == '0') {
-                    hex[last--] = 0;              // remove last char
-                  }
-                  // remove trailing dot
-                  if (hex[last] == '.') {
-                    hex[last] = 0;
-                  }
+              if (cur_val < min_valid_ptr) { new_val_str = ext_invalid_mem; }
+              else {
+                bool truncate = false;
+                if (decimals < 0) {
+                  decimals = -decimals;
+                  truncate = true;
                 }
-                new_val_str = copyStr(hex);
-                allocs[alloc_idx++] = new_val_str;
+                float number = *(float*)cur_val;
+                if (isnan(number) || isinf(number)) {
+                  new_val_str = "null";
+                } else {
+                  dtostrf(*(float*)cur_val, (decimals + 2), decimals, hex);
+
+                  if (truncate) {
+                    uint32_t last = strlen(hex) - 1;
+                    // remove trailing zeros
+                    while (hex[last] == '0') {
+                      hex[last--] = 0;              // remove last char
+                    }
+                    // remove trailing dot
+                    if (hex[last] == '.') {
+                      hex[last] = 0;
+                    }
+                  }
+                  new_val_str = copyStr(hex);
+                  allocs[alloc_idx++] = new_val_str;
+                }
               }
             }
             break;
           // '%_X' outputs a 64 bits unsigned int to uppercase HEX with 16 digits
           case 'X':     // input is `uint64_t*`, printed as 16 hex digits (no prefix 0x)
             {
-              if ((decimals < 0) || (decimals > 16)) { decimals = 16; }
-              U64toHex(*(uint64_t*)cur_val, hex, decimals);
-              new_val_str = copyStr(hex);
-              allocs[alloc_idx++] = new_val_str;
+              if (cur_val < min_valid_ptr) { new_val_str = ext_invalid_mem; }
+              else {
+                if ((decimals < 0) || (decimals > 16)) { decimals = 16; }
+                U64toHex(*(uint64_t*)cur_val, hex, decimals);
+                new_val_str = copyStr(hex);
+                allocs[alloc_idx++] = new_val_str;
+              }
             }
             break;
           // Trying to do String allocation alternatives, but not as interesting as I thought in the beginning
@@ -376,24 +391,55 @@ int32_t ext_vsnprintf_P(char * buf, size_t buf_len, const char * fmt_P, va_list 
     }
   }
   // Serial.printf("> format_final=%s\n", fmt_cpy); Serial.flush();
-  int32_t ret = vsnprintf_P(buf, buf_len, fmt_cpy, va_cpy);
+  int32_t ret = 0;    // return 0 if unsuccessful
+  if (out_buf != nullptr) {
+    ret = vsnprintf_P(out_buf, buf_len, fmt_cpy, va_cpy);
+  } else {
+    // if there is no output buffer, we allocate one on the heap
+    // first we do a dry-run to know the target size
+    char dummy[2];
+    int32_t target_len = vsnprintf_P(dummy, 1, fmt_cpy, va_cpy);
+    if (target_len >= 0) {
+      // successful
+      char * allocated_buf = (char*) malloc(target_len + 1);
+      if (allocated_buf != nullptr) {
+        allocated_buf[0] = 0;   // default to empty string
+        vsnprintf_P(allocated_buf, target_len + 1, fmt_cpy, va_cpy);
+        ret = (int32_t) allocated_buf;
+      }
+    }
+  }
 
   va_end(va_cpy);
 
   // disallocated all temporary strings
   for (uint32_t i = 0; i < alloc_idx; i++) {
-    free(allocs[i]);      // it is ok to call free() on nullptr so we don't test for nullptr first
+    free((void*)allocs[i]);      // it is ok to call free() on nullptr so we don't test for nullptr first
     allocs[i] = nullptr;
   }
   free(fmt_cpy);          // free the local copy of the format string
   return ret;
 }
 
-int32_t ext_snprintf_P(char * buf, size_t buf_len, const char * fmt, ...) {
+char * ext_vsnprintf_malloc_P(const char * fmt_P, va_list va) {
+  int32_t ret = ext_vsnprintf_P(nullptr, 0, fmt_P, va);
+  return (char*) ret;
+}
+
+int32_t ext_snprintf_P(char * out_buf, size_t buf_len, const char * fmt, ...) {
   va_list va;
   va_start(va, fmt);
 
-  int32_t ret = ext_vsnprintf_P(buf, buf_len, fmt, va);
+  int32_t ret = ext_vsnprintf_P(out_buf, buf_len, fmt, va);
   va_end(va);
   return ret;
+}
+
+char * ext_snprintf_malloc_P(const char * fmt, ...) {
+  va_list va;
+  va_start(va, fmt);
+
+  int32_t ret = ext_vsnprintf_P(nullptr, 0, fmt, va);
+  va_end(va);
+  return (char*) ret;
 }

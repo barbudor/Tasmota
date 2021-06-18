@@ -22,6 +22,7 @@
 
 const uint8_t PARAM8_SIZE = 18;            // Number of param bytes (SetOption)
 
+// Bitfield to be used for any SetOption0 .. SetOption31 persistent single bit
 typedef union {                            // Restricted by MISRA-C Rule 18.4 but so useful...
   uint32_t data;                           // Allow bit manipulation using SetOption
   struct {                                 // SetOption0 .. SetOption31
@@ -58,8 +59,9 @@ typedef union {                            // Restricted by MISRA-C Rule 18.4 bu
     uint32_t hass_light : 1;               // bit 30 (v6.0.0b)   - SetOption30  - (HAss) enforce autodiscovery as light (1)
     uint32_t global_state : 1;             // bit 31 (v6.1.0)    - SetOption31  - (Wifi, MQTT) Control link led blinking (1)
   };
-} SysBitfield;
+} SOBitfield;
 
+// Bitfield to be used for any SetOption50 .. SetOption81 persistent single bit
 typedef union {                            // Restricted by MISRA-C Rule 18.4 but so useful...
   uint32_t data;                           // Allow bit manipulation using SetOption
   struct {                                 // SetOption50 .. SetOption81
@@ -96,8 +98,9 @@ typedef union {                            // Restricted by MISRA-C Rule 18.4 bu
     uint32_t shutter_mode : 1;             // bit 30 (v6.6.0.14) - SetOption80  - (Shutter) Enable shutter support (1)
     uint32_t pcf8574_ports_inverted : 1;   // bit 31 (v6.6.0.14) - SetOption81  - (PCF8574) Invert all ports on PCF8574 devices (1)
   };
-} SysBitfield3;
+} SOBitfield3;
 
+// Bitfield to be used for any SetOption82 .. SetOption113 persistent single bit
 typedef union {                            // Restricted by MISRA-C Rule 18.4 but so useful...
   uint32_t data;                           // Allow bit manipulation using SetOption
   struct {                                 // SetOption82 .. SetOption113
@@ -121,21 +124,22 @@ typedef union {                            // Restricted by MISRA-C Rule 18.4 bu
     uint32_t zerocross_dimmer : 1;         // bit 17 (v8.3.1.4)  - SetOption99  - (PWM Dimmer) Enable zerocross dimmer (1)
     uint32_t remove_zbreceived : 1;        // bit 18 (v8.3.1.7)  - SetOption100 - (Zigbee) Remove ZbReceived form JSON message (1)
     uint32_t zb_index_ep : 1;              // bit 19 (v8.3.1.7)  - SetOption101 - (Zigbee) Add the source endpoint as suffix to attributes, ex `Power3` (1) instead of `Power` (0) if sent from endpoint 3
-    uint32_t teleinfo_baudrate : 1;        // bit 20 (v8.4.0.1)  - SetOption102 - (Teleinfo) Set Baud rate for Teleinfo communication to 1200 (0) or 9600 (1)
+    uint32_t obsolete1 : 1;                // bit 20 (v9.3.1.3)  - SetOption102 - teleinfo_baudrate Obsolete Teleinfo config has now a dedicated bit field
     uint32_t mqtt_tls : 1;                 // bit 21 (v8.4.0.1)  - SetOption103 - (MQTT TLS) Enable TLS mode (1) (requires TLS version)
     uint32_t mqtt_no_retain : 1;           // bit 22 (v8.4.0.1)  - SetOption104 - (MQTT) No Retain (1) - disable all MQTT retained messages, some brokers don't support it: AWS IoT, Losant
     uint32_t white_blend_mode : 1;         // bit 23 (v8.4.0.1)  - SetOption105 - (Light) White Blend Mode (1) - used to be `RGBWWTable` last value `0`, now deprecated in favor of this option
     uint32_t virtual_ct : 1;               // bit 24 (v8.4.0.1)  - SetOption106 - (Light) Virtual CT (1) - Creates a virtual White ColorTemp for RGBW lights
     uint32_t virtual_ct_cw : 1;            // bit 25 (v8.4.0.1)  - SetOption107 - (Light) Virtual CT Channel (1) - signals whether the hardware white is cold CW (true) or warm WW (false)
-    uint32_t teleinfo_rawdata : 1;         // bit 26 (v8.4.0.2)  - SetOption108 - (Teleinfo) Enable Teleinfo + Tasmota Energy device (0) or Teleinfo raw data only (1)
+    uint32_t obsolete2 : 1;                // bit 26 (v9.3.1.3)  - SetOption108 - teleinfo_rawdata Obsolete Teleinfo config has now a dedicated bit field
     uint32_t alexa_gen_1 : 1;              // bit 27 (v8.4.0.3)  - SetOption109 - (Alexa) Gen1 mode (1) - if you only have Echo Dot 2nd gen devices
     uint32_t zb_disable_autobind : 1;      // bit 28 (v8.5.0.1)  - SetOption110 - (Zigbee) Disable auto-config (1) when pairing new devices
     uint32_t buzzer_freq_mode : 1;         // bit 29 (v8.5.0.1)  - SetOption111 - (Buzzer) Use frequency output (1) for buzzer pin instead of on/off signal (0)
     uint32_t zb_topic_fname : 1;           // bit 30 (v8.5.0.1)  - SetOption112 - (Zigbee) Use friendly name in zigbee topic (1) (use with SetOption89)
     uint32_t rotary_poweron_dimlow : 1;    // bit 31 (v9.0.0.2)  - SetOption113 - (Rotary) Set dimmer low on rotary dial after power off (1)
   };
-} SysBitfield4;
+} SOBitfield4;
 
+// Bitfield to be used for any SetOption114 .. SetOption145 persistent single bit
 typedef union {                            // Restricted by MISRA-C Rule 18.4 but so useful...
   uint32_t data;                           // Allow bit manipulation using SetOption
   struct {                                 // SetOption114 .. SetOption145
@@ -148,6 +152,105 @@ typedef union {                            // Restricted by MISRA-C Rule 18.4 bu
     uint32_t zb_topic_endpoint : 1;        // bit 6 (v9.2.0.4)   - SetOption120 - (Zigbee) Append endpoint number to topic if device dependent (use with SetOption89)
     uint32_t mqtt_state_retain : 1;        // bit 7 (v9.3.0.1)   - CMND_STATERETAIN
     uint32_t mqtt_info_retain  : 1;        // bit 8 (v9.3.0.1)   - CMND_INFORETAIN
+    uint32_t wiegand_hex_output : 1;       // bit 9 (v9.3.1.1)   - SetOption123 - (Wiegand) switch tag number output to hex format (1)
+    uint32_t wiegand_keypad_to_tag : 1;    // bit 10 (v9.3.1.1)  - SetOption124 - (Wiegand) send key pad stroke as single char (0) or one tag (ending char #) (1)
+    uint32_t zigbee_hide_bridge_topic : 1; // bit 11 (v9.3.1.1)  - SetOption125 - (Zigbee) Hide bridge topic from zigbee topic (use with SetOption89) (1)
+    uint32_t ds18x20_mean : 1;             // bit 12 (v9.3.1.2)  - SetOption126 - (DS18x20) Enable arithmetic mean over teleperiod for JSON temperature (1)
+    uint32_t spare13 : 1;                  // bit 13
+    uint32_t spare14 : 1;                  // bit 14
+    uint32_t spare15 : 1;                  // bit 15
+    uint32_t spare16 : 1;                  // bit 16
+    uint32_t spare17 : 1;                  // bit 17
+    uint32_t spare18 : 1;                  // bit 18
+    uint32_t spare19 : 1;                  // bit 19
+    uint32_t spare20 : 1;                  // bit 20
+    uint32_t spare21 : 1;                  // bit 21
+    uint32_t spare22 : 1;                  // bit 22
+    uint32_t spare23 : 1;                  // bit 23
+    uint32_t spare24 : 1;                  // bit 24
+    uint32_t spare25 : 1;                  // bit 25
+    uint32_t spare26 : 1;                  // bit 26
+    uint32_t spare27 : 1;                  // bit 27
+    uint32_t spare28 : 1;                  // bit 28
+    uint32_t spare29 : 1;                  // bit 29
+    uint32_t spare30 : 1;                  // bit 30
+    uint32_t spare31 : 1;                  // bit 31
+  };
+} SOBitfield5;
+
+// Bitfield to be used for persistent multi bit
+typedef union {
+  uint32_t data;                           // Allow bit manipulation
+  struct {
+    uint32_t spare00 : 1;
+    uint32_t speed_conversion : 3;         // (v8.1.0.10) - Tx2x sensor
+    uint32_t time_format : 2;              // (v6.6.0.9)  - CMND_TIME
+    uint32_t calc_resolution : 3;
+    uint32_t weight_resolution : 2;
+    uint32_t frequency_resolution : 2;
+    uint32_t axis_resolution : 2;
+    uint32_t current_resolution : 2;
+    uint32_t voltage_resolution : 2;
+    uint32_t wattage_resolution : 2;
+    uint32_t emulation : 2;
+    uint32_t energy_resolution : 3;
+    uint32_t pressure_resolution : 2;
+    uint32_t humidity_resolution : 2;
+    uint32_t temperature_resolution : 2;
+  };
+} SysMBitfield1;
+
+// Bitfield to be used for persistent multi bit
+typedef union {
+  uint32_t data;                           // Allow bit manipulation
+  struct {
+    uint32_t spare00 : 1;                  // bit 0
+    uint32_t spare01 : 1;                  // bit 1
+    uint32_t spare02 : 1;                  // bit 2
+    uint32_t spare03 : 1;                  // bit 3
+    uint32_t spare04 : 1;                  // bit 4
+    uint32_t spare05 : 1;                  // bit 5
+    uint32_t spare06 : 1;                  // bit 6
+    uint32_t spare07 : 1;                  // bit 7
+    uint32_t spare08 : 1;                  // bit 8
+    uint32_t spare09 : 1;                  // bit 9
+    uint32_t spare10 : 1;                  // bit 10
+    uint32_t spare11 : 1;                  // bit 11
+    uint32_t spare12 : 1;                  // bit 12
+    uint32_t spare13 : 1;                  // bit 13
+    uint32_t spare14 : 1;                  // bit 14
+    uint32_t spare15 : 1;                  // bit 15
+    uint32_t spare16 : 1;                  // bit 16
+    uint32_t spare17 : 1;                  // bit 17
+    uint32_t spare18 : 1;                  // bit 18
+    uint32_t spare19 : 1;                  // bit 19
+    uint32_t spare20 : 1;                  // bit 20
+    uint32_t spare21 : 1;                  // bit 21
+    uint32_t spare22 : 1;                  // bit 22
+    uint32_t spare23 : 1;                  // bit 23
+    uint32_t spare24 : 1;                  // bit 24
+    uint32_t spare25 : 1;                  // bit 25
+    uint32_t spare26 : 1;                  // bit 26
+    uint32_t spare27 : 1;                  // bit 27
+    uint32_t spare28 : 1;                  // bit 28
+    uint32_t spare29 : 1;                  // bit 29
+    uint32_t temperature_set_res : 2;      // bits 30/31 (v9.3.1.4) - (Tuya)
+  };
+} SysMBitfield2;
+
+// Bitfield to be used for non-SetOption persistent single bit
+typedef union {
+  uint32_t data;                           // Allow bit manipulation
+  struct {
+    uint32_t telegram_send_enable : 1;     // bit 0  (v9.4.0.3) - CMND_TMSTATE 0/1 - Enable Telegram send
+    uint32_t telegram_recv_enable : 1;     // bit 1  (v9.4.0.3) - CMND_TMSTATE 2/3 - Enable Telegram receive
+    uint32_t telegram_echo_enable : 1;     // bit 2  (v9.4.0.3) - CMND_TMSTATE 4/5 - Enable Telegram echo
+    uint32_t spare03 : 1;                  // bit 3
+    uint32_t spare04 : 1;                  // bit 4
+    uint32_t spare05 : 1;                  // bit 5
+    uint32_t spare06 : 1;                  // bit 6
+    uint32_t spare07 : 1;                  // bit 7
+    uint32_t spare08 : 1;                  // bit 8
     uint32_t spare09 : 1;                  // bit 9
     uint32_t spare10 : 1;                  // bit 10
     uint32_t spare11 : 1;                  // bit 11
@@ -172,28 +275,7 @@ typedef union {                            // Restricted by MISRA-C Rule 18.4 bu
     uint32_t spare30 : 1;                  // bit 30
     uint32_t spare31 : 1;                  // bit 31
   };
-} SysBitfield5;
-
-typedef union {
-  uint32_t data;                           // Allow bit manipulation
-  struct {
-    uint32_t spare00 : 1;
-    uint32_t speed_conversion : 3;         // (v8.1.0.10) - Tx2x sensor
-    uint32_t time_format : 2;              // (v6.6.0.9)  - CMND_TIME
-    uint32_t calc_resolution : 3;
-    uint32_t weight_resolution : 2;
-    uint32_t frequency_resolution : 2;
-    uint32_t axis_resolution : 2;
-    uint32_t current_resolution : 2;
-    uint32_t voltage_resolution : 2;
-    uint32_t wattage_resolution : 2;
-    uint32_t emulation : 2;
-    uint32_t energy_resolution : 3;
-    uint32_t pressure_resolution : 2;
-    uint32_t humidity_resolution : 2;
-    uint32_t temperature_resolution : 2;
-  };
-} SysBitfield2;
+} SBitfield1;
 
 typedef union {
   uint16_t data;
@@ -259,7 +341,7 @@ typedef union {
     uint16_t int_report_defer : 4;          // Number of interrupts to ignore until reporting (default 0, max 15)
     uint16_t int_count_en : 1;              // Enable interrupt counter for this pin
     uint16_t int_retain_flag : 1;           // Report if interrupt occured for pin in next teleperiod
-    uint16_t spare13 : 1;
+    uint16_t keep_output : 1;               // For output modes, preserve the value currently in the MCP230xx
     uint16_t spare14 : 1;
     uint16_t spare15 : 1;
   };
@@ -313,6 +395,20 @@ typedef union {
   };
 } As3935Param;
 
+typedef union {
+  uint32_t data;
+  struct {
+  uint32_t raw_skip : 8;               // raw frame to skip when sending raw data (set to 2 means send 1 frame, then skip 2, ...)
+  uint32_t raw_report_changed : 1;     // Report only changed values in raw frames (only valid if raw_skip=0)
+  uint32_t raw_send : 1;               // Enable sending also real time raw data over MQTT
+  uint32_t raw_limit : 1;              // Limit raw data to minimal relevant fields (the ones moving quickly)
+  uint32_t mode_standard : 1;          // Set Linky Standard Mode (9600 bps stream) else legacy (1200 bps)
+  uint32_t spare4_1 : 4;               // Keep some spares for future uses
+  uint32_t spare8_1 : 8;               // Keep some spares for future uses
+  uint32_t spare8_2 : 8;               // Keep some spares for future uses
+  };
+} TeleinfoCfg;
+
 typedef struct {
   uint32_t usage1_kWhtotal;
   uint32_t usage2_kWhtotal;
@@ -327,17 +423,29 @@ typedef struct {
   uint8_t dpid = 0;
 } TuyaFnidDpidMap;
 
-const uint32_t settings_text_size = 699;   // Settings.text_pool[size] = Settings.display_model (2D2) - Settings.text_pool (017)
+typedef union {
+  uint8_t data;
+  struct {
+  uint8_t type : 3;
+  uint8_t invert : 1;
+  uint8_t spare4 : 1;
+  uint8_t spare5 : 1;
+  uint8_t spare6 : 1;
+  uint8_t spare7 : 1;
+  };
+} DisplayOptions;
+
+const uint32_t settings_text_size = 699;   // Settings->text_pool[size] = Settings->display_model (2D2) - Settings->text_pool (017)
 const uint8_t MAX_TUYA_FUNCTIONS = 16;
 
-struct {
+typedef struct {
   uint16_t      cfg_holder;                // 000  v6 header
   uint16_t      cfg_size;                  // 002
   unsigned long save_flag;                 // 004
   unsigned long version;                   // 008
   uint16_t      bootcount;                 // 00C
   uint16_t      cfg_crc;                   // 00E
-  SysBitfield   flag;                      // 010
+  SOBitfield    flag;                      // 010
   int16_t       save_data;                 // 014
   int8_t        timezone;                  // 016
 
@@ -355,7 +463,6 @@ struct {
   uint8_t       text_pool_290[66];         // 290
 
   // End of single char array of 698 chars max ****************
-
   uint8_t       display_model;             // 2D2
   uint8_t       display_mode;              // 2D3
   uint8_t       display_refresh;           // 2D4
@@ -375,8 +482,9 @@ struct {
   uint8_t       param[PARAM8_SIZE];        // 2FC  SetOption32 .. SetOption49
   int16_t       toffset[2];                // 30E
   uint8_t       display_font;              // 312
+  DisplayOptions  display_options;         // 313
 
-  uint8_t       free_313[44];              // 313
+  uint8_t       free_314[43];              // 314
 
   uint8_t       tuyamcu_topic;             // 33F  Manage tuyaSend topic. ex_energy_power_delta on 6.6.0.20, replaced on 8.5.0.1
   uint16_t      domoticz_update_timer;     // 340
@@ -409,7 +517,7 @@ struct {
   uint16_t      blinktime;                 // 39A
   uint16_t      blinkcount;                // 39C
   uint16_t      light_rotation;            // 39E
-  SysBitfield3  flag3;                     // 3A0
+  SOBitfield3   flag3;                     // 3A0
 
   uint8_t       ex_switchmode[8];          // 3A4 - Free since 9.2.0.6
 
@@ -476,8 +584,11 @@ struct {
 
   power_t       interlock[MAX_INTERLOCKS_SET];  // 4D0 MAX_INTERLOCKS = MAX_RELAYS / 2
 
-  uint8_t       free_508[41];              // 508
+  uint8_t       free_508[36];              // 508
 
+  uint16_t      mqtt_keepalive;            // 52C
+  uint16_t      mqtt_socket_timeout;       // 52E
+  uint8_t       mqtt_wifi_timeout;         // 530
   uint8_t       ina219_mode;               // 531
   uint16_t      pulse_timer[MAX_PULSETIMERS];  // 532
   uint16_t      button_debounce;           // 542
@@ -486,7 +597,7 @@ struct {
 
   uint8_t       free_558[100];             // 558
 
-  SysBitfield2  flag2;                     // 5BC
+  SysMBitfield1 flag2;                     // 5BC
   unsigned long pulse_counter[MAX_COUNTERS];  // 5C0
   uint16_t      pulse_counter_type;        // 5D0
   uint16_t      pulse_counter_debounce;    // 5D2
@@ -583,7 +694,7 @@ struct {
 
   uint8_t       ex_adc_param_type;         // EF7  Free since 9.0.0.1
 
-  SysBitfield4  flag4;                     // EF8
+  SOBitfield4   flag4;                     // EF8
   uint16_t      mqtt_port;                 // EFC
   uint8_t       serial_config;             // EFE
   uint8_t       wifi_output_power;         // EFF
@@ -626,13 +737,15 @@ struct {
   uint16_t      shd_warmup_brightness;     // F5C
   uint8_t       shd_warmup_time;           // F5E
 
-  uint8_t       free_f5e[72];              // F5E - Decrement if adding new Setting variables just above and below
+  uint8_t       free_f5f[65];              // F5F - Decrement if adding new Setting variables just above and below
 
   // Only 32 bit boundary variables below
 
+  SBitfield1    sbflag1;                   // FA0
+  TeleinfoCfg   teleinfo;                  // FA4
   uint64_t      rf_protocol_mask;          // FA8
   uint8_t       device_group_tie[4];       // FB0
-  SysBitfield5  flag5;                     // FB4
+  SOBitfield5   flag5;                     // FB4
   uint16_t      pulse_counter_debounce_low;   // FB8
   uint16_t      pulse_counter_debounce_high;  // FBA
   uint32_t      keeloq_master_msb;         // FBC
@@ -642,14 +755,12 @@ struct {
   uint32_t      device_group_share_in;     // FCC  Bitmask of device group items imported
   uint32_t      device_group_share_out;    // FD0  Bitmask of device group items exported
   uint32_t      bootcount_reset_time;      // FD4
-
-  int           ex_adc_param4;             // FD8  Free since 9.0.0.1
-
+  SysMBitfield2 mbflag2;                   // FD8
   uint32_t      shutter_button[MAX_SHUTTER_KEYS];  // FDC
   uint32_t      i2c_drivers[3];            // FEC  I2cDriver
   uint32_t      cfg_timestamp;             // FF8
   uint32_t      cfg_crc32;                 // FFC
-} Settings;
+} TSettings;
 
 typedef struct {
   uint16_t      valid;                     // 280  (RTC memory offset 100 - sizeof(RTCRBT))

@@ -35,7 +35,6 @@
 
 bool ra8876_init_done = false;
 uint8_t ra8876_ctouch_counter = 0;
-extern uint8_t *buffer;
 extern uint8_t color_type;
 RA8876 *ra8876;
 
@@ -43,16 +42,14 @@ RA8876 *ra8876;
 void RA8876_InitDriver(void) {
   if (PinUsed(GPIO_RA8876_CS) && (SPI_MOSI_MISO == TasmotaGlobal.spi_enabled)) {
 
-    Settings.display_model = XDSP_10;
+    Settings->display_model = XDSP_10;
 
-    if (Settings.display_width != RA8876_TFTWIDTH) {
-      Settings.display_width = RA8876_TFTWIDTH;
+    if (Settings->display_width != RA8876_TFTWIDTH) {
+      Settings->display_width = RA8876_TFTWIDTH;
     }
-    if (Settings.display_height != RA8876_TFTHEIGHT) {
-      Settings.display_height = RA8876_TFTHEIGHT;
+    if (Settings->display_height != RA8876_TFTHEIGHT) {
+      Settings->display_height = RA8876_TFTHEIGHT;
     }
-
-    buffer = 0;
 
     // default colors
     fg_color = RA8876_WHITE;
@@ -63,8 +60,8 @@ void RA8876_InitDriver(void) {
 
     ra8876->begin();
     renderer = ra8876;
-    renderer->DisplayInit(DISPLAY_INIT_MODE,Settings.display_size,Settings.display_rotate,Settings.display_font);
-    renderer->dim(Settings.display_dimmer);
+    renderer->DisplayInit(DISPLAY_INIT_MODE,Settings->display_size,Settings->display_rotate,Settings->display_font);
+    renderer->dim(Settings->display_dimmer);
 
     //testall();
 #ifdef SHOW_SPLASH
@@ -78,7 +75,7 @@ void RA8876_InitDriver(void) {
     color_type = COLOR_COLOR;
 
 #ifdef USE_FT5206
-    Touch_Init(Wire);
+    FT5206_Touch_Init(Wire);
 #endif
 
     ra8876_init_done = true;
@@ -305,7 +302,7 @@ bool Xdsp10(uint8_t function)
   if (FUNC_DISPLAY_INIT_DRIVER == function) {
       RA8876_InitDriver();
   }
-  else if (ra8876_init_done && (XDSP_10 == Settings.display_model)) {
+  else if (ra8876_init_done && (XDSP_10 == Settings->display_model)) {
     switch (function) {
       case FUNC_DISPLAY_MODEL:
         result = true;
