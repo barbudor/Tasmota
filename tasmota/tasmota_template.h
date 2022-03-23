@@ -185,6 +185,9 @@ enum UserSelectablePins {
   GPIO_BL6523_TX, GPIO_BL6523_RX,      // BL6523 based Watt meter Serial interface
   GPIO_ADE7880_IRQ,                    // ADE7880 IRQ
   GPIO_RESET,                          // Generic reset
+#ifdef ESP32
+  GPIO_GSMPPP_TX, GPIO_GSMPPP_RX,
+#endif
   GPIO_SENSOR_END };
 
 enum ProgramSelectablePins {
@@ -409,6 +412,9 @@ const char kSensorNames[] PROGMEM =
   D_SENSOR_BL6523_TX "|" D_SENSOR_BL6523_RX "|"
   D_SENSOR_ADE7880_IRQ "|"
   D_SENSOR_RESET "|"
+#ifdef ESP32
+  D_GSMPPP_TX "|" D_GSMPPP_TX "|"
+#endif
   ;
 
 const char kSensorNamesFixed[] PROGMEM =
@@ -981,6 +987,10 @@ const uint16_t kGpioNiceList[] PROGMEM = {
   AGPIO(GPIO_ETH_PHY_MDC),
   AGPIO(GPIO_ETH_PHY_MDIO),               // Ethernet
 #endif  // USE_ETHERNET
+#ifdef USE_GSMPPP
+  AGPIO(GPIO_GSMPPP_TX),
+  AGPIO(GPIO_GSMPPP_RX),
+#endif
 
 /*-------------------------------------------------------------------------------------------*\
  * ESP32 multiple Analog / Digital converter inputs

@@ -1,0 +1,17 @@
+{
+    "name": "esp32-modem",
+    "version": "0.0.0",
+    "keywords": [
+      "gsm", "modem"
+    ],
+    "description": "Components to manage GSM modems",
+    "repository":
+    {
+        "type": "git",
+        "url": "https://github.com/espressif/esp-idf/tree/release/v4.4/examples/protocols/pppos_client/components/modem"
+    },
+    "frameworks": "arduino",
+    "platforms": [
+      "espressif32"
+    ]
+}
