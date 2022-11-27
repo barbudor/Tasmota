@@ -913,6 +913,8 @@
 #define D_SENSOR_CM11_TX       "CM110x TX"
 #define D_SENSOR_CM11_RX       "CM110x RX"
 #define D_SENSOR_FLOWRATEMETER "Flowrate"
+#define D_GPIO_TINYGSM_TX      "TinyGSM TX"
+#define D_GPIO_TINYGSM_RX      "TinyGSM RX"
 
 // Units
 #define D_UNIT_AMPERE "A"

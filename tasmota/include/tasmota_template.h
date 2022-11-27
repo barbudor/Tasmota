@@ -202,6 +202,7 @@ enum UserSelectablePins {
   GPIO_BP1658CJ_CLK, GPIO_BP1658CJ_DAT,// BP1658CJ
   GPIO_DINGTIAN_CLK, GPIO_DINGTIAN_SDI, GPIO_DINGTIAN_Q7, GPIO_DINGTIAN_PL, GPIO_DINGTIAN_RCK,  // Dingtian relay board - 595's & 165's pins
   GPIO_LD2410_TX, GPIO_LD2410_RX,      // HLK-LD2410
+  GPIO_TINYGSM_TX, GPIO_TINYGSM_RX,    // Tiny GSM modem
   GPIO_SENSOR_END };
 
 // Error as warning to rethink GPIO usage with max 2045
@@ -451,6 +452,7 @@ const char kSensorNames[] PROGMEM =
   D_SENSOR_BP1658CJ_CLK "|" D_SENSOR_BP1658CJ_DAT "|"
   D_GPIO_DINGTIAN_CLK "|" D_GPIO_DINGTIAN_SDI "|" D_GPIO_DINGTIAN_Q7 "|" D_GPIO_DINGTIAN_PL "|" D_GPIO_DINGTIAN_RCK "|"
   D_SENSOR_LD2410_TX "|" D_SENSOR_LD2410_RX "|"
+  D_GPIO_TINYGSM_TX "|" D_GPIO_TINYGSM_RX "|"
   ;
 
 const char kSensorNamesFixed[] PROGMEM =
@@ -1078,6 +1080,11 @@ const uint16_t kGpioNiceList[] PROGMEM = {
   AGPIO(GPIO_DINGTIAN_Q7),
   AGPIO(GPIO_DINGTIAN_PL),
   AGPIO(GPIO_DINGTIAN_RCK),
+#endif
+
+#ifdef USE_TINYGSM
+  AGPIO(GPIO_TINYGSM_TX),               // To modem RX
+  AGPIO(GPIO_TINYGSM_RX),               // From modem TX
 #endif
 
 /*-------------------------------------------------------------------------------------------*\
