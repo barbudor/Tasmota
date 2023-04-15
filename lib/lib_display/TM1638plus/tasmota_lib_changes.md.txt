@@ -1,0 +1,26 @@
+## Attention when updating library. Changes in lib needed!!
+
+The TM1638plus_Model_2 driver initially did not provided backward compliant calls.
+The change requires addition in TM1638plus_Model2.h of 3 backward compliant methods:
+
+```C++
+    // Compatibility with TM1638plus
+
+    // Send seven segment value to seven segment
+    //  pass position 0-7 byte of data corresponding to segments (dp)gfedcba
+    // i.e 0b01000001 will set g and a on. 
+    void display7Seg(uint8_t position, uint8_t value) {
+      DisplaySegments(position, value);
+    }
+
+    // Send ASCII value to seven segment, pass position 0-7 and ASCII value byte
+    void displayASCII(uint8_t position, uint8_t ascii) {
+      DisplaySegments(position, pgm_read_byte(&SevenSeg[ascii - TM_ASCII_OFFSET]));
+    }
+
+    // Same as displayASCII function but turns on dot/decimal point  as well 
+    void displayASCIIwDot(uint8_t position, uint8_t ascii) { 
+      // add 128 or 0x080 0b1000000 to turn on decimal point/dot in seven seg
+      DisplaySegments(position, pgm_read_byte(&SevenSeg[ascii- TM_ASCII_OFFSET]) | TM_DOT_MASK_DEC);
+    }
+```

@@ -1,3 +1,6 @@
+[![Website](https://img.shields.io/badge/Website-Link-blue.svg)](https://gavinlyonsrepo.github.io/)  [![Rss](https://img.shields.io/badge/Subscribe-RSS-yellow.svg)](https://gavinlyonsrepo.github.io//feed.xml)  [![Donate](https://img.shields.io/badge/Donate-PayPal-green.svg)](https://www.paypal.com/paypalme/whitelight976)
+
+
 ![ module pics ](https://github.com/gavinlyonsrepo/TM1638plus/blob/master/extra/images/tm16383.jpg)
 
 Table of contents
@@ -5,14 +8,14 @@ Table of contents
 
   * [Overview](#overview)
   * [Installation](#installation)
-  * [Features](#features)
+  * [Connections](#connections)
+  * [Model Types](#model-types)
+  * [Files](#files)
   * [Model One](#model-one)
   * [Model Two](#model-two)
   * [Model Three](#model-three)
   * [Notes](#notes)
-  * [Memory](#memory)
-  * [Pic Ports](#pic-port)
-  
+  * [Ports](#ports)
 
 Overview
 --------------------------------------------
@@ -24,7 +27,6 @@ This library supports 3 different models, pictured above from left to right.
 1. Model 1, The (8 KEY & 8 LED) variant which has 8 LED's and 8 Push buttons.
 2. Model 2, The (QYF 16 KEY) variant which has 16 pushbuttons.
 3. Model 3, The (LKM1638) variant which has 8 bi-colour LED's and 8 Push buttons.
-
 
 * Main Author: Gavin Lyons.
 
@@ -38,8 +40,6 @@ This library supports 3 different models, pictured above from left to right.
 6. Teensy 4.0. (may not work at highest frequency see  notes section)
 
 * History: see CHANGELOG.md in extra folder
-* Contributors: [gabormay](https://github.com/gabormay)  [centic9](https://github.com/centic9) [wunderbaum](https://github.com/wunderbaum)
-
 
 Installation
 ------------------------------
@@ -53,7 +53,7 @@ See link below for instruction for this and for the other methods too.
 [Installing Additional Arduino Libraries guide](https://www.arduino.cc/en/Guide/Libraries)
 
 
-Features
+Connections
 ----------------------
 
 Connections to MCU: 
@@ -62,12 +62,13 @@ Connections to MCU:
 2. GPIO  = CLK  = Clock
 3. GPIO = DIO = Data input / output
 4. GND
-5. VCC 5V.
+5. VCC 
 
-This device is 5V if using 3.3V MCU, level shift.
+Model Types
+-------------------------------
 
 This library supports three variants of the TM1638, which for purposes of this documentation, 
-will be named Model 1 ,Model 2 and Model 3.  
+will be named Model 1 ,Model 2 and Model 3.  Pictured at top of this Readme, left to right. 
 
 | Model No | Module Name | LEDS | Push buttons | 
 | ------ | ------ |  ------ | ------ |
@@ -75,6 +76,8 @@ will be named Model 1 ,Model 2 and Model 3.
 | 2 | TM1638 KEYS, QYF  | 0 | 16 |
 | 3 | TM1638 V1.3 or LKM1638  | 8 bi color,  red and green  | 8 |
 
+Files
+-----------------------------
 There are two sets of files to support model 1 & 2 . I kept them separate as the models are wired quite different, Model 1 address by digit, while Model 2 address by segment. So the code is quite different  for most functions. Model 3 uses same code as Model 1, just different example file and different use of LED functions. Common settings, data and functions are in the TM1638plus_common.x files.
 
 | Model | Header | Code file | TEST files | 
@@ -107,8 +110,9 @@ For more information see the commented headers in header file.
 1. Print an ASCII character.
 2. Print an ASCII character with a dot/decimal point.
 3. Print a Hexadecimal digit(0-15).
-4. Print a long integer number with or without leading zeros.
-5. Print two integer numbers (0-9999) to each nibble with or without leading zeros.
+4. Print a long integer number with or without leading zeros, and right and left aligned text.
+5. Print two integer numbers (0-9999) to each nibble with or without leading zeros,
+and right and left aligned text.
 6. Print a text string(dots are replaced and dot is turned on preceding digit), 
 "abc.def" becomes "abcdef" with c decimal point segment switched on.
 7. Read buttons status. User may have to debounce buttons depending on application.
@@ -143,10 +147,11 @@ The commented functions can be found in library header file TM1638plus_Model2.h.
 The library support Strings,decimal ,Hex ,raw ASCII data, setting individual segments,
 and the decimal point. For more detailed information on functions see commented headers in header file(.h).
 
-1. Print a Hexadecimal number with or without leading zeros
-2. Print a decimal number with or without leading zeros
+1. Print a Hexadecimal number with or without leading zeros, and right and left aligned text.
+2. Print a decimal number with or without leading zeros, and right and left aligned text.
 3. Manually set segments to create custom patterns.
-4. Print two 4 digit decimal number(0-9999) to each nibble with or without leading zeros.
+4. Print two 4 digit decimal number(0-9999) to each nibble with or without leading zeros,
+and right and left aligned text.
 5. Print a text string, dot function supported. 
 6. Read buttons status. User may want to debounce buttons depending on application.
 See TM1638plus_ADC_TEST_Model2.ino for debounce button example. 
@@ -200,7 +205,7 @@ Notes
 3. Driving multiple displays.
 4. Detecting multiple buttons pressed together.
 
-*Note A* : Swapped display Issue: Model 2 only
+*Note 1* : Swapped display Issue: Model 2 only
 
 For Some users using this library the nibbles in information display byte 
 where swapped around. This is because there are different versions of modules on market with different wiring.  See issue #3 on github called Swapped display :: "12345678" becomes "56781234". 
@@ -212,14 +217,19 @@ Object, set the fourth parameter "swap_nibbles" to True, The default is false.
 | QYF-TM1638 | default operation | false | 
 | QYF-TM1638 -Ver 1.0 | Swapped display Fix |  true  | 
 
-*Note B* :  High frequency micro-controllers.
+*Note 2* :  High frequency micro-controllers.
 
 This library uses a software SPI-like protocol and may not work fully on 
 micro-controllers running at a very high frequency, without some adjustments to timing.
-Its a SPI-like interface with a single bidirectional data wire DIO.
+It is a SPI-like interface with a single bidirectional data wire DIO.
 The TM1638 is basically a slow SPI device (< 500kHz) in DIO mode. The clock uses the equivalent of SPI mode 3 (normally high, clocks data on the rising edge). The problem is that the native Arduino shiftIn()/shiftOut() wire functions are simply too fast for this device (technically the clock signalling for the TM1638 is inverted but as it triggers on a rising edge still it is tolerant of that).
-To make this work with fast devices, the shift clocking is slowed with a small delay (on the order of a microsecond).  As of version 1.6 a new parameter *(_HIGH_FREQ)* has been introduced to constructor it is false by default. Set to true for high frequency MCU ~> 100Mhz.  This will fix the issue of HF MCU not reading buttons correctly(ESP-Xs).  The High_Freq parameter causes a custom shift-in function to be used.
-The  Teensy results have been sent to me, I don't have these MCU's them at time of writing. 
+To make this work with fast devices, the shift clocking is slowed with a small delay (on the order of a microsecond).  
+
+HighFreqshiftin  function:
+ 
+As of version 1.6 a new parameter *(_HIGH_FREQ)* has been introduced to constructor it is false by default. Set to true for high frequency MCU ~> 100Mhz.  This should fix the issue of HF MCU not reading buttons correctly(ESP-Xs). The High_Freq parameter causes a custom shift-in function to be used. The delay in this function is fixed at 1 uS, it can be changed manually by adjusted  the defines in common header file.
+
+The  Teensy results have been sent in by email, I don't have these MCU's them at time of writing. 
 
 | IC |  frequency | Status | 
 | ------ | ------ | ------ | 
@@ -230,18 +240,18 @@ The  Teensy results have been sent to me, I don't have these MCU's them at time 
 | ESP8266 | 160Mhz | Working |
 | ESP 32  |   240 MHz  | Working, with high_freq set to  true | 
 | Teensy 4.0| 150Mhz | Working model 1,  no Data rest of models |
-| Teensy 4.0| 396Mhz | Not working on  model1 ,  no Data rest of models |
+| Teensy 4.0| 396Mhz | Not working on  m1 pre v1.6, no data after,  no Data rest of models |
 
-*Note C* : Driving multiple displays.
+*Note 3* : Driving multiple displays.
 
 It is possible to drive multiple modules. Share the DIO and CLK lines and use a unique
 STB line for each device. see issue number 10 at github for example code.
 
-*Note D* : Detecting multiple buttons pressed together.
+*Note 4* : Detecting multiple buttons pressed together.
 
 Model 1 and Model 3 CAN detect multiple buttons pressed.
 
-Model 3 has two different functions:
+Model 2 has two different functions:
 
 1. ReadKey16 returns a byte with decimal value 1-16 this function cannot 
 detect multiple buttons pressed.
@@ -252,25 +262,18 @@ Pressing Certain combinations of buttons will cause the  data on Seven Segments 
 change. So the simultaneous use of multiple key presses and the seven segments display 
 is problematic. See issue 12 on github for more details.
 
-Memory
--------------------------------
 
-Version 1.4.
-
-1. Model 1 memory usage NANO, basic hello world sketch.
-
-Sketch uses 1488 bytes (4%) of program storage space. 
-Global variables use 22 bytes (1%) of dynamic memory.
-
-2. Model 2 memory usage NANO, basic hello world sketch.
-
-Sketch uses 1536 bytes (5%) of program storage space. 
-Global variables use 23 bytes (1%) of dynamic memory.
-
-
-Pic Port
+Ports
 -------------------
 
 MicroChip PIC XC8 port.
-I have ported this library to the PIC for the XC8 compiler: 
 [ Link ](https://github.com/gavinlyonsrepo/pic_16F18446_projects)
+
+Stm32cubeIDE STM32F303k8T6  C++
+[Link](https://github.com/gavinlyonsrepo/STM32_projects) 
+
+Raspberry Pi C++ 
+[Link](https://github.com/gavinlyonsrepo/TM1638plus_RPI)
+
+RPi-PICO_RP2040 SDK C++ 
+[Link](https://github.com/gavinlyonsrepo/TM1638plus_PICO)
