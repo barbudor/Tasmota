@@ -978,6 +978,10 @@
   #define SHIFT595_DEVICE_COUNT  1                 // [Shift595DeviceCount] Set the number of connected 74x595 shift registers
 
 //#define USE_TM1638                               // Add support for TM1638 switches copying Switch1 .. Switch8 (+1k code)
+#define TM1638_MODEL 1                             // Default config: Most common model with 8 digits, 8 buttons and 8 red-leds
+//  #define TM1638_MODEL 2                         // Larger board with 8 digits and 4x4 buttons matrix, no leds
+//  #define TM1638_MODEL 3                         // Variant of model 1 with bi-color-leds, HE10 connectors on left and right sides for daisy chaining
+#define TM1638_SWAP_NIBBLES false                  // Option for TM1638 model 2
 //  #define TM1638_USE_AS_BUTTON                   // Add support for buttons
 //  #define TM1638_USE_AS_SWITCH                   // Add support for switches (default)
 //  #define TM1638_MAX_DISPLAYS    8               // Add support for power control 8 displays

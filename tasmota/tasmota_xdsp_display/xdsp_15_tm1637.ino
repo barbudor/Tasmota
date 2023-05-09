@@ -167,12 +167,24 @@ and setting it to 3 alternates between time and date.
 #define MAX7219_ADDR 0
 
 
+#ifndef TM1638_MODEL
+#define TM1638_MODEL 1
+#endif
+
 #include "SevenSegmentTM1637.h"
+#if (TM1638_MODEL == 1) || (TM1638_MODEL == 3)
 #include <TM1638plus.h>
+#else
+#include <TM1638plus_Model2.h>
+#endif
 #include <LedControl.h>
 
 SevenSegmentTM1637 *tm1637display;
+#if (TM1638_MODEL == 1) || (TM1638_MODEL == 3)
 TM1638plus *tm1638display;
+#else
+TM1638plus_Model2 *tm1638display;
+#endif
 LedControl *max7219display;
 
 enum display_types
@@ -186,7 +198,7 @@ struct
 {
   char scroll_text[CMD_MAX_LEN];
   char msg[60];
-  char model_name[8];
+  char model_name[12];
   uint8_t scroll_delay = 4;
   uint8_t scroll_index = 0;
   uint8_t iteration = 0;
@@ -254,8 +266,13 @@ void TM1637Init(void)
   }
   else if (TM1638 == TM1637Data.display_type)
   {
+#if (TM1638_MODEL == 1) || (TM1638_MODEL == 3)    
     strcpy_P(TM1637Data.model_name, PSTR("TM1638"));
     tm1638display = new TM1638plus(Pin(GPIO_TM1638STB), Pin(GPIO_TM1638CLK), Pin(GPIO_TM1638DIO), true);
+#else
+    strcpy_P(TM1637Data.model_name, PSTR("TM1638_m2"));
+    tm1638display = new TM1638plus_Model2(Pin(GPIO_TM1638STB), Pin(GPIO_TM1638CLK), Pin(GPIO_TM1638DIO), TM1638_SWAP_NIBBLES, false);
+#endif
     tm1638display->displayBegin();
   }
   else if (MAX7219 == TM1637Data.display_type)
