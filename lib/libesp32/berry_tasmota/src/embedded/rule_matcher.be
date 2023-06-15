@@ -203,6 +203,40 @@ class Rule_Matcher
       self.op_parse(op_str, op_value)
     end
 
+  static class Rule_Matcher_Map
+    var trigger_map                      # a map object to match in event map
+
+    def init(trigger_map)
+      self.trigger_map = trigger_map
+    end
+
+    def map_match(sub_map, in_map)
+      for k: sub_map.keys()
+        if in_map.find(k) == nil
+          return false
+        elif isinstance(sub_map[k], map)
+          if !self.map_match(sub_map[k], in_map[k])
+            return false
+          end
+        elif sub_map[k] != in_map[k]
+          return false
+        end
+      end
+      return true
+    end  
+
+    def match(event_map)
+      if event_map == nil                 return nil end        # safeguard
+      if !isinstance(event_map, map)      return nil end        # sub_map can only match a map
+      if !self.map_match(self.trigger_map, event_map) return nil end
+      return true
+    end
+
+    def tostring()
+      return "<Matcher obj=" + str(self.obj) + ">"
+    end
+  end
+
 
   ###########################################################################################
   # Functions to compare two values
@@ -295,6 +329,13 @@ class Rule_Matcher
     if pattern == nil     return nil end
     
     var matchers = []
+
+    if isinstance(pattern, map)
+      print("we get a map")
+      matchers.push(_class.Rule_Matcher_Map(pattern))
+      return _class(pattern, "", matchers)       # `_class` is a reference to the Rule_Matcher class
+    end
+    print("not a map")
 
     # changes "Dimmer>50" to ['Dimmer', '>', '50']
     # Ex: DS18B20#Temperature<20
