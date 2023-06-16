@@ -194,6 +194,41 @@ class Rule_Matcher
     end
   end
 
+  static class Rule_Matcher_Map
+  var trigger_map                      # a map object to match in event map
+
+  def init(trigger_map)
+    self.trigger_map = trigger_map
+  end
+
+  def map_match(sub_map, in_map)
+    for k: sub_map.keys()
+      if in_map.find(k) == nil
+        return false
+      elif isinstance(sub_map[k], map)
+        if !self.map_match(sub_map[k], in_map[k])
+          return false
+        end
+      elif sub_map[k] != in_map[k]
+        return false
+      end
+    end
+    return true
+  end  
+
+  def match(event_map)
+    if event_map == nil                 return nil end        # safeguard
+    if !isinstance(event_map, map)      return nil end        # sub_map can only match a map
+    if !self.map_match(self.trigger_map, event_map) return nil end
+    return true
+  end
+
+  def tostring()
+    return "<Matcher obj=" + str(self.obj) + ">"
+  end
+end
+
+
   static class Rule_Matcher_Operator
     var op_func                                         # function making the comparison
     var op_str                                          # name of the operator like '>'
@@ -204,63 +239,63 @@ class Rule_Matcher
     end
 
 
-  ###########################################################################################
-  # Functions to compare two values
-  ###########################################################################################
-  def op_parse(op, op_value)
-    self.op_str = op
+    ###########################################################################################
+    # Functions to compare two values
+    ###########################################################################################
+    def op_parse(op, op_value)
+      self.op_str = op
 
-    def op_eq_str(a,b)     return tasmota._apply_str_op(1, str(a), b) end
-    def op_neq_str(a,b)    return tasmota._apply_str_op(2, str(a), b) end
-    def op_start_str(a,b)  return tasmota._apply_str_op(3, str(a), b) end
-    def op_end_str(a,b)    return tasmota._apply_str_op(4, str(a), b) end
-    def op_sub_str(a,b)    return tasmota._apply_str_op(5, str(a), b) end
-    def op_notsub_str(a,b) return tasmota._apply_str_op(6, str(a), b) end
-    def op_eq(a,b)         return number(a) == b   end
-    def op_neq(a,b)        return number(a) != b   end
-    def op_gt(a,b)         return number(a) >  b   end
-    def op_gte(a,b)        return number(a) >= b   end
-    def op_lt(a,b)         return number(a) <  b   end
-    def op_lte(a,b)        return number(a) <= b   end
-    def op_mod(a,b)        return (int(a) % b) == 0 end
+      def op_eq_str(a,b)     return tasmota._apply_str_op(1, str(a), b) end
+      def op_neq_str(a,b)    return tasmota._apply_str_op(2, str(a), b) end
+      def op_start_str(a,b)  return tasmota._apply_str_op(3, str(a), b) end
+      def op_end_str(a,b)    return tasmota._apply_str_op(4, str(a), b) end
+      def op_sub_str(a,b)    return tasmota._apply_str_op(5, str(a), b) end
+      def op_notsub_str(a,b) return tasmota._apply_str_op(6, str(a), b) end
+      def op_eq(a,b)         return number(a) == b   end
+      def op_neq(a,b)        return number(a) != b   end
+      def op_gt(a,b)         return number(a) >  b   end
+      def op_gte(a,b)        return number(a) >= b   end
+      def op_lt(a,b)         return number(a) <  b   end
+      def op_lte(a,b)        return number(a) <= b   end
+      def op_mod(a,b)        return (int(a) % b) == 0 end
 
-    var numerical = false
-    var f
+      var numerical = false
+      var f
 
-    if   op=='='            f = op_eq_str
-    elif op=='!=='          f = op_neq_str
-    elif op=='$!'           f = op_neq_str
-    elif op=='$<'           f = op_start_str
-    elif op=='$>'           f = op_end_str
-    elif op=='$|'           f = op_sub_str
-    elif op=='$^'           f = op_notsub_str
-    else
-      numerical = true
-      if   op=='=='         f = op_eq
-      elif op=='!='         f = op_neq
-      elif op=='>'          f = op_gt
-      elif op=='>='         f = op_gte
-      elif op=='<'          f = op_lt
-      elif op=='<='         f = op_lte
-      elif op=='|'          f = op_mod
-      end
-    end
-
-    self.op_func = f
-    if numerical            # if numerical comparator, make sure that the value passed is a number
-      # to check if a number is correct, the safest method is to use a json decoder
-      import json
-      var val_num = json.load(op_value)
-      if type(val_num) != 'int' && type(val_num) != 'real'
-        raise "value_error", "value needs to be a number"
+      if   op=='='            f = op_eq_str
+      elif op=='!=='          f = op_neq_str
+      elif op=='$!'           f = op_neq_str
+      elif op=='$<'           f = op_start_str
+      elif op=='$>'           f = op_end_str
+      elif op=='$|'           f = op_sub_str
+      elif op=='$^'           f = op_notsub_str
       else
-        self.op_value = val_num
+        numerical = true
+        if   op=='=='         f = op_eq
+        elif op=='!='         f = op_neq
+        elif op=='>'          f = op_gt
+        elif op=='>='         f = op_gte
+        elif op=='<'          f = op_lt
+        elif op=='<='         f = op_lte
+        elif op=='|'          f = op_mod
+        end
       end
-    else
-      self.op_value = str(op_value)
-    end
 
-  end
+      self.op_func = f
+      if numerical            # if numerical comparator, make sure that the value passed is a number
+        # to check if a number is correct, the safest method is to use a json decoder
+        import json
+        var val_num = json.load(op_value)
+        if type(val_num) != 'int' && type(val_num) != 'real'
+          raise "value_error", "value needs to be a number"
+        else
+          self.op_value = val_num
+        end
+      else
+        self.op_value = str(op_value)
+      end
+
+    end
 
     def match(val)
       var t = type(val)
@@ -295,6 +330,12 @@ class Rule_Matcher
     if pattern == nil     return nil end
     
     var matchers = []
+
+    if isinstance(pattern, map)
+      matchers.push(_class.Rule_Matcher_Map(pattern))
+      return _class(pattern, "", matchers)       # `_class` is a reference to the Rule_Matcher class
+    end
+    print("not a map")
 
     # changes "Dimmer>50" to ['Dimmer', '>', '50']
     # Ex: DS18B20#Temperature<20
