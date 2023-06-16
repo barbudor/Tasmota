@@ -335,7 +335,6 @@ end
       matchers.push(_class.Rule_Matcher_Map(pattern))
       return _class(pattern, "", matchers)       # `_class` is a reference to the Rule_Matcher class
     end
-    print("not a map")
 
     # changes "Dimmer>50" to ['Dimmer', '>', '50']
     # Ex: DS18B20#Temperature<20
