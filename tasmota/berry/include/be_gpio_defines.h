@@ -181,6 +181,8 @@ const be_const_member_t lv_gpio_constants[] = {
     { "OUTPUT_OPEN_DRAIN", OUTPUT_OPEN_DRAIN },
     { "P9813_CLK", (int32_t) GPIO_P9813_CLK },
     { "P9813_DAT", (int32_t) GPIO_P9813_DAT },
+    { "WS2801_CLK", (int32_t) GPIO_WS2801_CLK },
+    { "WS2801_DAT", (int32_t) GPIO_WS2801_DAT },
     { "PMS5003_RX", (int32_t) GPIO_PMS5003_RX },
     { "PMS5003_TX", (int32_t) GPIO_PMS5003_TX },
     { "PN532_RXD", (int32_t) GPIO_PN532_RXD },

@@ -264,6 +264,7 @@ const uint32_t LOOP_SLEEP_DELAY = 50;       // Lowest number of milliseconds to 
 #define NEO_HW_LC8812          2            // NeoPixelBus hardware LC8812
 #define NEO_HW_APA106          3            // NeoPixelBus hardware APA106
 #define NEO_HW_P9813           4            // NeoPixelBus hardware P9813
+#define NEO_HW_WS2801          5            // NeoPixelBus hardware WS2081
 
 #define MQTT_PUBSUBCLIENT      1            // Mqtt PubSubClient library
 #define MQTT_TASMOTAMQTT       2            // Mqtt TasmotaMqtt library based on esp-mqtt-arduino - soon obsolete

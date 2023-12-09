@@ -89,6 +89,7 @@ void (* const Ws2812Command[])(void) PROGMEM = {
   #undef USE_WS2812_INVERTED
 #endif  // USE_WS2812_CTYPE
 
+
 typedef CONCAT3(NEO_FEATURE_NEO,NEO_FEATURE_TYPE,NEO_FEATURE_FEATURE) selectedNeoFeatureType;
 
 // selectedNeoSpeedType is built as Neo+Esp8266+Dma+Inverted+Ws2812x+Method
@@ -144,6 +145,7 @@ typedef CONCAT3(NEO_FEATURE_NEO,NEO_FEATURE_TYPE,NEO_FEATURE_FEATURE) selectedNe
   #undef NEO_HW
   #define NEO_HW      P9813       // complete driver is P9813Method
 #endif
+
 
 #if defined(ESP8266) && defined(USE_WS2812_DMA)
 typedef CONCAT6(NEO_NEO,NEO_CHIP,NEO_PROTO,NEO_INV,NEO_HW,Method)   selectedNeoSpeedType;
@@ -696,6 +698,9 @@ bool Ws2812ReinitStrip(void)
 #if (USE_WS2812_HARDWARE == NEO_HW_P9813)
   if (PinUsed(GPIO_P9813_CLK) && PinUsed(GPIO_P9813_DAT)) {  // RGB led
     strip = new NeoPixelBus<selectedNeoFeatureType, selectedNeoSpeedType>(Settings->light_pixels, Pin(GPIO_P9813_CLK), Pin(GPIO_P9813_DAT));
+#elif (USE_WS2812_HARDWARE == NEO_HW_WS2801)
+  if (PinUsed(GPIO_WS2801_CLK) && PinUsed(GPIO_WS2801_DAT)) {  // RGB led
+    strip = new NeoPixelBus<selectedNeoFeatureType, selectedNeoSpeedType>(Settings->light_pixels, Pin(GPIO_WS2801_CLK), Pin(GPIO_WS2801_DAT));
 #else
   if (PinUsed(GPIO_WS2812)) {  // RGB led
     // For DMA, the Pin is ignored as it uses GPIO3 due to DMA hardware use.

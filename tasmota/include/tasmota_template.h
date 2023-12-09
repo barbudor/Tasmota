@@ -214,6 +214,7 @@ enum UserSelectablePins {
   GPIO_HDMI_CEC,                        // Support for HDMI CEC
   GPIO_HC8_RXD,                         // HC8 Serial interface
   GPIO_I2S_DAC,                         // Audio DAC support for ESP32 and ESP32S2
+  GPIO_WS2801_CLK, GPIO_WS2801_DAT,     // WS2801 Clock and Data
   GPIO_SENSOR_END };
 
 // Error as warning to rethink GPIO usage with max 2045
@@ -475,6 +476,7 @@ const char kSensorNames[] PROGMEM =
   D_SENSOR_HDMI_CEC "|"
   D_SENSOR_HC8_RX "|"
   D_SENSOR_I2S_DAC "|"
+  D_SENSOR_WS2801_CLK "|" D_SENSOR_WS2801_DAT "|"
   ;
 
 const char kSensorNamesFixed[] PROGMEM =
@@ -743,6 +745,9 @@ const uint16_t kGpioNiceList[] PROGMEM = {
 #if (USE_WS2812_HARDWARE == NEO_HW_P9813)
   AGPIO(GPIO_P9813_CLK),                // P9813 CLOCK
   AGPIO(GPIO_P9813_DAT),                // P9813 DATA
+#elif (USE_WS2812_HARDWARE == NEO_HW_WS2801)
+  AGPIO(GPIO_WS2801_CLK),                // P9813 CLOCK
+  AGPIO(GPIO_WS2801_DAT),                // P9813 DATA
 #else
   AGPIO(GPIO_WS2812) + (MAX_RMT ? MAX_RMT + 1 : 0), // WS2812 Led string, using RMT on ESP32
 #endif  // NEO_HW_P9813
