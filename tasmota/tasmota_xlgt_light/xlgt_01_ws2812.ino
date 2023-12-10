@@ -145,7 +145,18 @@ typedef CONCAT3(NEO_FEATURE_NEO,NEO_FEATURE_TYPE,NEO_FEATURE_FEATURE) selectedNe
   #undef NEO_HW
   #define NEO_HW      P9813       // complete driver is P9813Method
 #endif
-
+#if (USE_WS2812_HARDWARE == NEO_HW_WS2801)
+  #undef NEO_NEO
+  #define NEO_NEO
+  #undef NEO_CHIP
+  #define NEO_CHIP
+  #undef NEO_PROTO
+  #define NEO_PROTO
+  #undef NEO_INV
+  #define NEO_INV
+  #undef NEO_HW
+  #define NEO_HW      NeoWs2801       // complete driver is NeoWs2801Method
+#endif
 
 #if defined(ESP8266) && defined(USE_WS2812_DMA)
 typedef CONCAT6(NEO_NEO,NEO_CHIP,NEO_PROTO,NEO_INV,NEO_HW,Method)   selectedNeoSpeedType;
