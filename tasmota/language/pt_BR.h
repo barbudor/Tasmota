@@ -75,7 +75,7 @@
 #define D_COLDLIGHT "Luz fria"
 #define D_COMMAND "Comando"
 #define D_CONNECTED "Ligado"
-#define D_CORS_DOMAIN "Domínio CORS"
+#define D_CORS_DOMAIN "Domínio CORS"#define D_COLOR "Color"
 #define D_COUNT "Contagem"
 #define D_COUNTER "Contador"
 #define D_CT_POWER "Carga CT"

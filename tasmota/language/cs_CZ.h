@@ -75,7 +75,7 @@
 #define D_COLDLIGHT "Studené světlo"
 #define D_COMMAND "Příkaz"
 #define D_CONNECTED "...připojeno"
-#define D_CORS_DOMAIN "CORS Domain"
+#define D_CORS_DOMAIN "CORS Domain"#define D_COLOR "Color"
 #define D_COUNT "Počítej"
 #define D_COUNTER "Počítadlo"
 #define D_CT_POWER "CT Power"

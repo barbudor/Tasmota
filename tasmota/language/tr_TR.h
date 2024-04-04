@@ -75,7 +75,7 @@
 #define D_COLDLIGHT "Soğuk"
 #define D_COMMAND "Komut"
 #define D_CONNECTED "Bağlandı"
-#define D_CORS_DOMAIN "CORS Domain"
+#define D_CORS_DOMAIN "CORS Domain"#define D_COLOR "Color"
 #define D_COUNT "Sayı"
 #define D_COUNTER "Sayaç"
 #define D_CT_POWER "CT Power"

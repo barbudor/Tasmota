@@ -75,7 +75,7 @@
 #define D_COLDLIGHT "אור קר"
 #define D_COMMAND "פקודה"
 #define D_CONNECTED "מחובר"
-#define D_CORS_DOMAIN "CORS Domain"
+#define D_CORS_DOMAIN "CORS Domain"#define D_COLOR "Color"
 #define D_COUNT "סופר"
 #define D_COUNTER "מונה"
 #define D_CT_POWER "CT Power"
