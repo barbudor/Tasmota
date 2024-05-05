@@ -1472,7 +1472,7 @@ bool UfsUploadFileOpen(const char* upload_filename) {
   return (ufs_upload_file);
 }
 
-bool UfsUploadFileWrite(uint8_t *upload_buf, size_t current_size) {
+bool UfsUploadFileWrite(const uint8_t *upload_buf, size_t current_size) {
   if (ufs_upload_file) {
     ufs_upload_file.write(upload_buf, current_size);
   } else {

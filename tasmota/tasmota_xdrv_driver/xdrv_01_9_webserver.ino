@@ -3381,8 +3381,14 @@ int WebQuery(char *buffer) {
 
   int status = WEBCMND_WRONG_PARAMETERS;
 
-  char *temp;
-  char *url = strtok_r(buffer, " ", &temp);
+  char *temp = buffer;
+#ifdef USE_UFILESYS
+  char *filename = NULL;
+  if (*buffer == '>') {
+    filename = strtok_r(temp, " ", &temp);
+  }
+#endif
+  char *url = strtok_r(temp, " ", &temp);
   char *method = strtok_r(temp, " ", &temp);
 
   if (url && method) {
@@ -3422,12 +3428,19 @@ int WebQuery(char *buffer) {
       else return status;
 
       if (http_code > 0) {                    // http_code will be negative on error
-#ifdef USE_WEBSEND_RESPONSE
+#if defined(USE_WEBSEND_RESPONSE) || defined(USE_UFILESYS)
         if (http_code == HTTP_CODE_OK || http_code == HTTP_CODE_MOVED_PERMANENTLY) {
           // Return received data to the user - Adds 900+ bytes to the code
           String response = http.getString(); // File found at server - may need lot of ram or trigger out of memory!
           const char* read = response.c_str();
-
+#ifdef USE_UFILESYS
+          if (filename && *filename && read) {
+            UfsUploadFileOpen(filename);
+            UfsUploadFileWrite((const uint8_t*)response.c_str(), response.length());
+            UfsUploadFileClose();
+          }
+#endif
+#ifdef USE_WEBSEND_RESPONSE
 //          uint32_t len = response.length() + 1;
 //          AddLog(LOG_LEVEL_DEBUG, PSTR("DBG: Response '%*_H' = %s"), len, (uint8_t*)read, read);
 
@@ -3462,8 +3475,9 @@ int WebQuery(char *buffer) {
           } else {
             status = WEBCMND_DONE;
           }
+#endif  // #ifdef USE_WEBSEND_RESPONSE
         } else
-#endif  // USE_WEBSEND_RESPONSE
+#endif  // #if defined(USE_WEBSEND_RESPONSE) || defined(USE_UFILESYS)
         status = WEBCMND_DONE;
       } else {
         status = WEBCMND_CONNECT_FAILED;
