@@ -3384,12 +3384,12 @@ int WebQuery(char *buffer) {
   int status = WEBCMND_WRONG_PARAMETERS;
 
   char *temp = buffer;
-#ifdef USE_UFILESYS
+#if defined(USE_UFILESYS) && defined(WEBQUERY_SAVE_FILE)
   char *filename = NULL;
   if (*buffer == '>') {
-    filename = strtok_r(temp, " ", &temp);
+    filename = strtok_r(temp, " ", &temp) +1;
   }
-#endif
+#endif // #if defined(USE_UFILESYS) && defined(WEBQUERY_SAVE_FILE)
   char *url = strtok_r(temp, " ", &temp);
   char *method = strtok_r(temp, " ", &temp);
 
@@ -3427,21 +3427,29 @@ int WebQuery(char *buffer) {
       else if (0 == strcasecmp_P(method, PSTR("POST"))) { http_code = http.POST(body); }
       else if (0 == strcasecmp_P(method, PSTR("PUT"))) { http_code = http.PUT(body); }
       else if (0 == strcasecmp_P(method, PSTR("PATCH"))) { http_code = http.PATCH(body); }
-      else return status;
+      else {
+        return status;
+      }
 
       if (http_code > 0) {                    // http_code will be negative on error
-#if defined(USE_WEBSEND_RESPONSE) || defined(USE_UFILESYS)
+#if defined(USE_WEBSEND_RESPONSE) || (defined(USE_UFILESYS) && defined(WEBQUERY_SAVE_FILE))
         if (http_code == HTTP_CODE_OK || http_code == HTTP_CODE_MOVED_PERMANENTLY) {
           // Return received data to the user - Adds 900+ bytes to the code
           String response = http.getString(); // File found at server - may need lot of ram or trigger out of memory!
           const char* read = response.c_str();
-#ifdef USE_UFILESYS
+#if defined(USE_UFILESYS) && defined(WEBQUERY_SAVE_FILE)
           if (filename && *filename && read) {
-            UfsUploadFileOpen(filename);
-            UfsUploadFileWrite((const uint8_t*)response.c_str(), response.length());
-            UfsUploadFileClose();
+Serial.println("wq to file"); // ##################
+            if (UfsUploadFileOpen(filename)) {
+              if (!UfsUploadFileWrite((const uint8_t*)response.c_str(), response.length())) {
+                AddLog(LOG_LEVEL_DEBUG, PSTR("WEB: failed writing to file '%s'"), filename);
+              }
+              UfsUploadFileClose();
+            } else {
+              AddLog(LOG_LEVEL_DEBUG, PSTR("WEB: failed opening file '%s'"), filename);
+            }
           }
-#endif
+#endif // #if defined(USE_UFILESYS) && defined(WEBQUERY_SAVE_FILE)
 #ifdef USE_WEBSEND_RESPONSE
 //          uint32_t len = response.length() + 1;
 //          AddLog(LOG_LEVEL_DEBUG, PSTR("DBG: Response '%*_H' = %s"), len, (uint8_t*)read, read);
@@ -3474,13 +3482,12 @@ int WebQuery(char *buffer) {
             script_setaflg(0);
 #endif  // USE_SCRIPT
             status = WEBCMND_VALID_RESPONSE;
-          } else {
-            status = WEBCMND_DONE;
-          }
+          } else
 #endif  // #ifdef USE_WEBSEND_RESPONSE
+            status = WEBCMND_DONE;
         } else
-#endif  // #if defined(USE_WEBSEND_RESPONSE) || defined(USE_UFILESYS)
-        status = WEBCMND_DONE;
+#endif  // #if defined(USE_WEBSEND_RESPONSE) || (defined(USE_UFILESYS) && defined(WEBQUERY_SAVE_FILE))
+          status = WEBCMND_DONE;
       } else {
         status = WEBCMND_CONNECT_FAILED;
       }
