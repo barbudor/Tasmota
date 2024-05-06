@@ -3427,9 +3427,7 @@ int WebQuery(char *buffer) {
       else if (0 == strcasecmp_P(method, PSTR("POST"))) { http_code = http.POST(body); }
       else if (0 == strcasecmp_P(method, PSTR("PUT"))) { http_code = http.PUT(body); }
       else if (0 == strcasecmp_P(method, PSTR("PATCH"))) { http_code = http.PATCH(body); }
-      else {
-        return status;
-      }
+      else return status;
 
       if (http_code > 0) {                    // http_code will be negative on error
 #if defined(USE_WEBSEND_RESPONSE) || (defined(USE_UFILESYS) && defined(WEBQUERY_SAVE_FILE))
