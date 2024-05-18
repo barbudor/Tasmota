@@ -593,7 +593,7 @@ void KNX_INIT(void)
     device_param[KNX_ENERGY_CURRENT-1].show = true;
     device_param[KNX_ENERGY_POWERFACTOR-1].show = true;
   }
-#endif
+#endif // USE_ENERGY_SENSOR
 
 #ifdef USE_RULES
   device_param[KNX_SLOT1-1].show = true;
@@ -602,7 +602,7 @@ void KNX_INIT(void)
   device_param[KNX_SLOT4-1].show = true;
   device_param[KNX_SLOT5-1].show = true;
   device_param[KNX_SCENE-1].show = true;
-#endif
+#endif // USE_RULES
 
 #ifdef USE_LIGHT
   if (Light.subtype > LST_NONE) {
@@ -610,7 +610,7 @@ void KNX_INIT(void)
     if ((LST_RGB == Light.subtype) || (LST_RGBW == Light.subtype))
       device_param[KNX_COLOUR-1].show = true;
   }
-#endif
+#endif // USE_LIGHT
 
   // Delete from KNX settings all configuration is not anymore related to this device
   if (KNX_CONFIG_NOT_MATCH()) {
@@ -661,7 +661,7 @@ void KNX_CB_Action(message_t const &msg, void *arg)
   } else if (chan->type == KNX_COLOUR) {
     // VALUE
     snprintf_P(tempchar, sizeof(tempchar), (Light.subtype == LST_RGB) ? PSTR("%02X%02X%02X"):PSTR("%02X%02X%02X%02X"), msg.data[1], msg.data[2], msg.data[3]);
-#endif
+#endif // USE_LIGHT
   } else {
     // VALUE
     float tempvar = knx.data_to_4byte_float(msg.data);
@@ -719,7 +719,7 @@ void KNX_CB_Action(message_t const &msg, void *arg)
           }
         }
       }
-#endif
+#endif // USE_RULES
 #ifdef USE_LIGHT
       else if (chan->type == KNX_DIMMER)  // KNX RX DIMMER SLOT (write command)
       {
@@ -745,7 +745,7 @@ void KNX_CB_Action(message_t const &msg, void *arg)
           }
         }
       }
-#endif
+#endif // USE_LIGHT
       break;
 
     case KNX_CT_READ:
@@ -788,7 +788,7 @@ void KNX_CB_Action(message_t const &msg, void *arg)
       {
         KNX_ANSWER_4BYTE_INT(msg.received_on, round(1000.0 * Energy->total_sum));
       }
-#endif
+#endif // USE_ENERGY_SENSOR
 #ifdef USE_RULES
       else if ((chan->type >= KNX_SLOT1) && (chan->type <= KNX_SLOT5)) // KNX RX SLOTs (read command)
       {
@@ -801,7 +801,7 @@ void KNX_CB_Action(message_t const &msg, void *arg)
           }
         }
       }
-#endif
+#endif // USE_RULES
 #ifdef USE_LIGHT
       else if (chan->type == KNX_DIMMER) // Reply KNX_DIMMER
       {
@@ -816,7 +816,7 @@ void KNX_CB_Action(message_t const &msg, void *arg)
           KNX_ANSWER_6BYTE_COLOR(msg.received_on, Light.current_color);
         }
       }
-#endif
+#endif // USE_LIGHT
       break;
   }
 }
@@ -878,7 +878,7 @@ void KnxUpdateLight()
     }
   }
 }
-#endif
+#endif // USE_LIGHT
 
 void KnxSendButtonPower(void)
 {
