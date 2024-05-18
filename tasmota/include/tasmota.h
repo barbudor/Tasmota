@@ -25,7 +25,6 @@
 \*********************************************************************************************/
 
 #define XFUNC_PTR_IN_ROM                    // Enable for keeping tables in ROM (PROGMEM) which seem to have access issues on some flash types
-#define MQTT_DATA_STRING                    // Use heap instead of fixed memory for TasmotaGlobal.mqtt_data
 
 /*********************************************************************************************\
  * Power Type
@@ -147,7 +146,6 @@ const uint8_t MAX_ROTARIES = 2;             // Max number of Rotary Encoders
 
 const char MQTT_TOKEN_PREFIX[] PROGMEM = "%prefix%";  // To be substituted by mqtt_prefix[x]
 const char MQTT_TOKEN_TOPIC[] PROGMEM = "%topic%";    // To be substituted by mqtt_topic, mqtt_grptopic, mqtt_buttontopic, mqtt_switchtopic
-const char WIFI_HOSTNAME[] = "%s-%04d";     // Expands to <MQTT_TOPIC>-<last 4 decimal chars of MAC address>
 
 const uint8_t CONFIG_FILE_SIGN = 0xA5;      // Configuration file signature
 const uint8_t CONFIG_FILE_XOR = 0x5A;       // Configuration file xor (0 = No Xor)
@@ -210,12 +208,7 @@ const uint16_t TOPSZ = 151;                 // Max number of characters in topic
 #else   // Not ESP8266
 const uint16_t LOG_BUFFER_SIZE = 6096;      // Max number of characters in logbuffer used by weblog, syslog and mqttlog
 #endif  // ESP8266
-
-#ifdef MQTT_DATA_STRING
 const uint16_t MAX_LOGSZ = LOG_BUFFER_SIZE -96;  // Max number of characters in log line - may be overruled which will truncate log entry
-#else
-const uint16_t MAX_LOGSZ = 700;             // Max number of characters in log line
-#endif
 
 const uint8_t SENSOR_MAX_MISS = 5;          // Max number of missed sensor reads before deciding it's offline
 
@@ -379,7 +372,7 @@ enum TopicOptions { CMND, STAT, TELE, nu1, RESULT_OR_CMND, RESULT_OR_STAT, RESUL
 
 enum UploadTypes { UPL_TASMOTA = 1, UPL_SETTINGS, UPL_EFM8BB1, UPL_TASMOTACLIENT, UPL_EFR32, UPL_SHD, UPL_CCL, UPL_UFSFILE };
 
-enum ExecuteCommandPowerOptions { POWER_OFF, POWER_ON, POWER_TOGGLE, POWER_BLINK, POWER_BLINK_STOP,
+enum ExecuteCommandPowerOptions { POWER_OFF, POWER_ON, POWER_TOGGLE, POWER_BLINK, POWER_BLINK_STOP, POWER_OFF_FORCE,
                                   POWER_OFF_NO_STATE = 8, POWER_ON_NO_STATE, POWER_TOGGLE_NO_STATE,
                                   POWER_SHOW_STATE = 16 };
 enum SendKeyPowerOptions { POWER_HOLD = 3, POWER_INCREMENT = 4, POWER_INV = 5, POWER_CLEAR = 6, POWER_RELEASE = 7,

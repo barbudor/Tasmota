@@ -110,16 +110,20 @@ int DomoticzRssiQuality(void) {
 }
 
 uint32_t DomoticzRelayIdx(uint32_t relay) {
+  if (relay >= MAX_RELAYS_SET) { return 0; }
   return (relay < MAX_DOMOTICZ_IDX) ? Settings->domoticz_relay_idx[relay] : Domoticz->relay_idx[relay -MAX_DOMOTICZ_IDX];
 }
 
 void DomoticzSetRelayIdx(uint32_t relay, uint32_t idx) {
+  if (relay >= MAX_RELAYS_SET) { return; }
   if (relay < MAX_DOMOTICZ_IDX) {
     Settings->domoticz_relay_idx[relay] = idx;
   } else {
     Domoticz->relay_idx[relay -MAX_DOMOTICZ_IDX] = idx;
   }
 }
+
+/*********************************************************************************************/
 
 #ifdef USE_SONOFF_IFAN
 void MqttPublishDomoticzFanState(void) {
@@ -136,10 +140,12 @@ void MqttPublishDomoticzFanState(void) {
 }
 
 void DomoticzUpdateFanState(void) {
-  if (Domoticz->update_flag) {
-    MqttPublishDomoticzFanState();
+  if (Domoticz) {
+    if (Domoticz->update_flag) {
+      MqttPublishDomoticzFanState();
+    }
+    Domoticz->update_flag = true;
   }
-  Domoticz->update_flag = true;
 }
 #endif  // USE_SONOFF_IFAN
 
@@ -174,11 +180,15 @@ void MqttPublishDomoticzPowerState(uint8_t device) {
 }
 
 void DomoticzUpdatePowerState(uint8_t device) {
-  if (Domoticz->update_flag) {
-    MqttPublishDomoticzPowerState(device);
+  if (Domoticz) {
+    if (Domoticz->update_flag) {
+      MqttPublishDomoticzPowerState(device);
+    }
+    Domoticz->update_flag = true;
   }
-  Domoticz->update_flag = true;
 }
+
+/*********************************************************************************************/
 
 void DomoticzMqttUpdate(void) {
   if (Domoticz->subscribe && (Settings->domoticz_update_timer || Domoticz->update_timer)) {
@@ -222,7 +232,8 @@ void DomoticzMqttSubscribe(void) {
     Domoticz->subscribe = false;
     MqttUnsubscribe(stopic);
   }
-  if (!Domoticz->subscribe && any_relay) {
+//  if (!Domoticz->subscribe && any_relay) {  // Fails on MQTT server reconnect
+  if (any_relay) {
     Domoticz->subscribe = true;
     MqttSubscribe(stopic);
   }
@@ -515,12 +526,11 @@ void DomoticzSensorP1SmartMeter(char *usage1, char *usage2, char *return1, char 
   DomoticzSensor(DZ_P1_SMART_METER, data);
 }
 
-
 /*********************************************************************************************/
 
 void DomoticzInit(void) {
   if (Settings->flag.mqtt_enabled) {  // SetOption3 - Enable MQTT
-    Domoticz = (Domoticz_t*)calloc(sizeof(Domoticz_t), 1);  // Need calloc to reset registers to 0/false
+    Domoticz = (Domoticz_t*)calloc(1, sizeof(Domoticz_t));  // Need calloc to reset registers to 0/false
     if (nullptr == Domoticz) { return; }
 
     Domoticz->update_flag = true;

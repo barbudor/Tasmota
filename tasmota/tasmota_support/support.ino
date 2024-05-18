@@ -22,6 +22,34 @@ extern struct rst_info resetInfo;
 }
 
 /*********************************************************************************************\
+ * ESP32 Watchdog
+\*********************************************************************************************/
+#ifdef ESP32
+// Watchdog - yield() resets the watchdog
+
+extern "C" void __yield(void);              // original function from Arduino Core
+extern "C"
+void yield(void) {
+  __yield();
+  feedLoopWDT();
+}
+
+// patching delay(uint32_t ms)
+extern "C" void __real_delay(uint32_t ms);  // original function from Arduino Core
+
+extern "C" void __wrap_delay(uint32_t ms) {
+#ifdef USE_ESP32_WDT
+  if (ms) { feedLoopWDT(); }
+  __real_delay(ms);
+  feedLoopWDT();
+#else
+  __real_delay(ms);
+#endif
+}
+
+#endif // ESP32
+
+/*********************************************************************************************\
  * Watchdog extension (https://github.com/esp8266/Arduino/issues/1532)
 \*********************************************************************************************/
 
@@ -611,16 +639,18 @@ String HexToString(uint8_t* data, uint32_t length) {
 // Converts a Hex string (case insensitive) into an array of bytes
 // Returns the number of bytes in the array, or -1 if an error occured
 // The `out` buffer must be at least half the size of hex string
-int32_t HexToBytes(const char* hex, uint8_t* out, size_t* outLen) {
+int32_t HexToBytes(const char* hex, uint8_t* out, size_t out_len) {
   size_t len = strlen_P(hex);
-  *outLen = 0;
   if (len % 2 != 0) {
     return -1;
   }
 
-  size_t outLength = len / 2;
+  size_t bytes_out = len / 2;
+  if (bytes_out < out_len) {
+    bytes_out = out_len;
+  }
   
-  for(size_t i = 0; i < outLength; i++) {
+  for (size_t i = 0; i < bytes_out; i++) {
     char byte[3];
     byte[0] = hex[i*2];
     byte[1] = hex[i*2 + 1];
@@ -629,11 +659,11 @@ int32_t HexToBytes(const char* hex, uint8_t* out, size_t* outLen) {
     char* endPtr;
     out[i] = strtoul(byte, &endPtr, 16);
     
-    if(*endPtr != '\0') {
+    if (*endPtr != '\0') {
       return -1;
     }
   }
-  return outLength;
+  return bytes_out;
 }
 
 String UrlEncode(const String& text) {
@@ -1269,52 +1299,31 @@ char* ResponseGetTime(uint32_t format, char* time_str)
 }
 
 char* ResponseData(void) {
-#ifdef MQTT_DATA_STRING
   return (char*)TasmotaGlobal.mqtt_data.c_str();
-#else
-  return TasmotaGlobal.mqtt_data;
-#endif
 }
 
 uint32_t ResponseSize(void) {
-#ifdef MQTT_DATA_STRING
   return MAX_LOGSZ;                            // Arbitratry max length satisfying full log entry
-#else
-  return sizeof(TasmotaGlobal.mqtt_data);
-#endif
 }
 
 uint32_t ResponseLength(void) {
-#ifdef MQTT_DATA_STRING
   return TasmotaGlobal.mqtt_data.length();
-#else
-  return strlen(TasmotaGlobal.mqtt_data);
-#endif
 }
 
 void ResponseClear(void) {
   // Reset string length to zero
-#ifdef MQTT_DATA_STRING
   TasmotaGlobal.mqtt_data = "";
 //  TasmotaGlobal.mqtt_data = (const char*) nullptr;  // Doesn't work on ESP32 as strlen() (in MqttPublishPayload) will fail (for obvious reasons)
-#else
-  TasmotaGlobal.mqtt_data[0] = '\0';
-#endif
 }
 
 void ResponseJsonStart(void) {
   // Insert a JSON start bracket {
-#ifdef MQTT_DATA_STRING
   TasmotaGlobal.mqtt_data.setCharAt(0,'{');
-#else
-  TasmotaGlobal.mqtt_data[0] = '{';
-#endif
 }
 
 int Response_P(const char* format, ...)        // Content send snprintf_P char data
 {
   // This uses char strings. Be aware of sending %% if % is needed
-#ifdef MQTT_DATA_STRING
   va_list arg;
   va_start(arg, format);
   char* mqtt_data = ext_vsnprintf_malloc_P(format, arg);
@@ -1326,19 +1335,11 @@ int Response_P(const char* format, ...)        // Content send snprintf_P char d
     TasmotaGlobal.mqtt_data = "";
   }
   return TasmotaGlobal.mqtt_data.length();
-#else
-  va_list args;
-  va_start(args, format);
-  int len = ext_vsnprintf_P(TasmotaGlobal.mqtt_data, ResponseSize(), format, args);
-  va_end(args);
-  return len;
-#endif
 }
 
 int ResponseTime_P(const char* format, ...)    // Content send snprintf_P char data
 {
   // This uses char strings. Be aware of sending %% if % is needed
-#ifdef MQTT_DATA_STRING
   char timestr[100];
   TasmotaGlobal.mqtt_data = ResponseGetTime(Settings->flag2.time_format, timestr);
 
@@ -1351,23 +1352,11 @@ int ResponseTime_P(const char* format, ...)    // Content send snprintf_P char d
     free(mqtt_data);
   }
   return TasmotaGlobal.mqtt_data.length();
-#else
-  va_list args;
-  va_start(args, format);
-
-  ResponseGetTime(Settings->flag2.time_format, TasmotaGlobal.mqtt_data);
-
-  int mlen = ResponseLength();
-  int len = ext_vsnprintf_P(TasmotaGlobal.mqtt_data + mlen, ResponseSize() - mlen, format, args);
-  va_end(args);
-  return len + mlen;
-#endif
 }
 
 int ResponseAppend_P(const char* format, ...)  // Content send snprintf_P char data
 {
   // This uses char strings. Be aware of sending %% if % is needed
-#ifdef MQTT_DATA_STRING
   va_list arg;
   va_start(arg, format);
   char* mqtt_data = ext_vsnprintf_malloc_P(format, arg);
@@ -1377,14 +1366,6 @@ int ResponseAppend_P(const char* format, ...)  // Content send snprintf_P char d
     free(mqtt_data);
   }
   return TasmotaGlobal.mqtt_data.length();
-#else
-  va_list args;
-  va_start(args, format);
-  int mlen = ResponseLength();
-  int len = ext_vsnprintf_P(TasmotaGlobal.mqtt_data + mlen, ResponseSize() - mlen, format, args);
-  va_end(args);
-  return len + mlen;
-#endif
 }
 
 int ResponseAppendTimeFormat(uint32_t format)
@@ -1405,7 +1386,7 @@ int ResponseAppendTHD(float f_temperature, float f_humidity) {
                              Settings->flag2.humidity_resolution, &f_humidity,
                              Settings->flag2.temperature_resolution, &dewpoint);
 #ifdef USE_HEAT_INDEX
-  float heatindex = CalcTemHumToHeatIndex(TasmotaGlobal.temperature_celsius, TasmotaGlobal.humidity);
+  float heatindex = CalcTemHumToHeatIndex(f_temperature, f_humidity);
   int len2 = ResponseAppend_P(PSTR(",\"" D_JSON_HEATINDEX "\":%*_f"),
                               Settings->flag2.temperature_resolution, &heatindex);
   return len + len2;                              
@@ -1425,11 +1406,7 @@ int ResponseJsonEndEnd(void)
 
 bool ResponseContains_P(const char* needle) {
 /*
-#ifdef MQTT_DATA_STRING
   return (strstr_P(TasmotaGlobal.mqtt_data.c_str(), needle) != nullptr);
-#else
-  return (strstr_P(TasmotaGlobal.mqtt_data, needle) != nullptr);
-#endif
 */
   return (strstr_P(ResponseData(), needle) != nullptr);
 }
