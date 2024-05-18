@@ -649,8 +649,7 @@ void KNX_CB_Action(message_t const &msg, void *arg)
   if (msg.data_len == 1) {
     // COMMAND
     sprintf(tempchar,"%d",msg.data[0]);
-  } else if (chan->type == KNX_SCENE 
-  ) {
+  } else if (chan->type == KNX_SCENE) {
     // VALUE
     uint8_t tempvar = knx.data_to_1byte_uint(msg.data);
     dtostrfd(tempvar,0,tempchar);
@@ -661,10 +660,7 @@ void KNX_CB_Action(message_t const &msg, void *arg)
     dtostrfd(tempvar,0,tempchar);
   } else if (chan->type == KNX_COLOUR) {
     // VALUE
-    if (Light.subtype == LST_RGB) {
-      snprintf_P(tempchar, sizeof(tempchar), PSTR("%02X%02X%02X"), msg.data[1], msg.data[2], msg.data[3]);
-    } else if (Light.subtype == LST_RGBW) {
-      snprintf_P(tempchar, sizeof(tempchar), PSTR("%02X%02X%02X%02X"), msg.data[1], msg.data[2], msg.data[3], msg.data[4]);
+    snprintf_P(tempchar, sizeof(tempchar), (Light.subtype == LST_RGB) ? PSTR("%02X%02X%02X"):PSTR("%02X%02X%02X%02X"), msg.data[1], msg.data[2], msg.data[3]);
     }
 #endif
   } else {
