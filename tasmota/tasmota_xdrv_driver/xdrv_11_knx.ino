@@ -661,7 +661,6 @@ void KNX_CB_Action(message_t const &msg, void *arg)
   } else if (chan->type == KNX_COLOUR) {
     // VALUE
     snprintf_P(tempchar, sizeof(tempchar), (Light.subtype == LST_RGB) ? PSTR("%02X%02X%02X"):PSTR("%02X%02X%02X%02X"), msg.data[1], msg.data[2], msg.data[3]);
-    }
 #endif
   } else {
     // VALUE
