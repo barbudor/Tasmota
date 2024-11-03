@@ -75,8 +75,12 @@
 #define XDRV_67                  67
 #define XI2C_77                  77       // See I2CDEVICES.md
 
+#ifndef MCP23XXX_ADDR_START
 #define MCP23XXX_ADDR_START      0x20     // 32
+#endif
+#ifndef MCP23XXX_ADDR_END
 #define MCP23XXX_ADDR_END        0x26     // 38
+#endif
 
 #define MCP23XXX_MAX_DEVICES     6
 
@@ -636,6 +640,7 @@ void MCP23xModuleInit(void) {
 #ifdef USE_I2C
     uint8_t mcp23xxx_address = MCP23XXX_ADDR_START;
     while ((Mcp23x.max_devices < MCP23XXX_MAX_DEVICES) && (mcp23xxx_address < MCP23XXX_ADDR_END)) {
+    AddLog(LOG_LEVEL_INFO, PSTR("MCP: scan @%02X (%d)"), mcp23xxx_address, mcp23xxx_address);
       Mcp23x.chip = Mcp23x.max_devices;
       if (I2cSetDevice(mcp23xxx_address)) {
         Mcp23x.device[Mcp23x.chip].pin_int = (PinUsed(GPIO_MCP23XXX_INT, Mcp23x.chip)) ? Pin(GPIO_MCP23XXX_INT, Mcp23x.chip) : -1;
